@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { supabase } from "@/lib/supabase";
 
 type Mode = "auto" | "morning" | "day" | "evening" | "night";
 type Accent = "honey" | "green" | "teal" | "blue" | "purple" | "pink";
@@ -110,6 +111,25 @@ export default function Home() {
   }, []);
 
   useEffect(() => {
+    if (!supabase) return;
+    let alive = true;
+    (async () => {
+      const { data: g } = await supabase!
+        .from("groceries")
+        .select("id,text,done")
+        .order("created_at");
+      if (alive && g) setGroceries(g as Grocery[]);
+
+      const { data: r } = await supabase!
+        .from("radar_items")
+        .select("id,type,title,author")
+        .order("created_at");
+      if (alive && r) setRadar(r as MediaItem[]);
+    })();
+    return () => { alive = false; };
+  }, []);
+
+  useEffect(() => {
     let alive = true;
     const load = async () => {
       try {
@@ -137,23 +157,46 @@ export default function Home() {
   const timeStr = now ? `${((now.getHours() % 12) || 12)}:${pad(now.getMinutes())}` : "—:—";
   const dateStr = now ? `${DAYS[now.getDay()]}, ${now.getDate()} ${MONTHS[now.getMonth()]}` : "";
 
-  const toggleGrocery = (id: number) =>
-    setGroceries((gs) => gs.map((g) => (g.id === id ? { ...g, done: !g.done } : g)));
+  const toggleGrocery = (g: Grocery) => {
+    const next = !g.done;
+    setGroceries((gs) => gs.map((x) => (x.id === g.id ? { ...x, done: next } : x)));
+    if (supabase) {
+      void supabase.from("groceries").update({ done: next }).eq("id", g.id);
+    }
+  };
 
-  const addGrocery = () => {
+  const addGrocery = async () => {
     const v = grocInput.trim();
     if (!v) return;
-    setGroceries((gs) => [...gs, { id: nextId.current++, text: v, done: false }]);
     setGrocInput("");
+    if (supabase) {
+      const { data } = await supabase
+        .from("groceries")
+        .insert({ text: v, done: false })
+        .select("id,text,done")
+        .single();
+      if (data) setGroceries((gs) => [...gs, data as Grocery]);
+    } else {
+      setGroceries((gs) => [...gs, { id: nextId.current++, text: v, done: false }]);
+    }
     say("added to groceries");
   };
 
-  const addMedia = () => {
+  const addMedia = async () => {
     const v = mediaInput.trim();
     if (!v) return;
     const type: MediaType = radarFilter === "all" ? "book" : radarFilter;
-    setRadar((r) => [...r, { id: nextId.current++, type, title: v }]);
     setMediaInput("");
+    if (supabase) {
+      const { data } = await supabase
+        .from("radar_items")
+        .insert({ type, title: v })
+        .select("id,type,title,author")
+        .single();
+      if (data) setRadar((r) => [...r, data as MediaItem]);
+    } else {
+      setRadar((r) => [...r, { id: nextId.current++, type, title: v }]);
+    }
     say("added to your radar");
   };
 
@@ -300,7 +343,7 @@ export default function Home() {
                     className={"check" + (g.done ? " done" : "")}
                     aria-label={"Toggle " + g.text}
                     aria-pressed={g.done}
-                    onClick={() => toggleGrocery(g.id)}
+                    onClick={() => toggleGrocery(g)}
                   >
                     {g.done ? "✓" : ""}
                   </button>
