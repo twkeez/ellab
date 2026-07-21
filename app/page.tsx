@@ -8,6 +8,7 @@ type MediaType = "book" | "film" | "music";
 
 type Grocery = { id: number; text: string; done: boolean };
 type MediaItem = { id: number; type: MediaType; title: string; author?: string };
+type Wx = { city: string; tempF: number; label: string; rainLine: string };
 
 const DAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 const MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
@@ -60,6 +61,9 @@ export default function Home() {
   const [mode, setMode] = useState<Mode>("auto");
   const [accent, setAccent] = useState<Accent>("honey");
 
+  const [wx, setWx] = useState<Wx | null>(null);
+  const [wxError, setWxError] = useState(false);
+
   const [toast, setToast] = useState<string | null>(null);
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -103,6 +107,23 @@ export default function Home() {
       if (timerRef.current) clearInterval(timerRef.current);
       if (toastTimer.current) clearTimeout(toastTimer.current);
     };
+  }, []);
+
+  useEffect(() => {
+    let alive = true;
+    const load = async () => {
+      try {
+        const r = await fetch("/api/weather");
+        if (!r.ok) throw new Error("bad response");
+        const d: Wx = await r.json();
+        if (alive) { setWx(d); setWxError(false); }
+      } catch {
+        if (alive) setWxError(true);
+      }
+    };
+    load();
+    const id = setInterval(load, 900000); // refresh every 15 min
+    return () => { alive = false; clearInterval(id); };
   }, []);
 
   const say = useCallback((msg: string) => {
@@ -192,7 +213,13 @@ export default function Home() {
               </div>
             </div>
             <div className="wx">
-              Pittsburgh · <b>24°</b> partly cloudy · rain likely ~3pm · good dog-walk window 5–6pm
+              {wx ? (
+                <>{wx.city} · <b>{wx.tempF}°</b> {wx.label} · {wx.rainLine}</>
+              ) : wxError ? (
+                "Pittsburgh · weather unavailable right now"
+              ) : (
+                "Pittsburgh · checking the sky…"
+              )}
             </div>
           </div>
           <div className="topright">
