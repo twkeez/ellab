@@ -10,6 +10,18 @@ type MediaType = "book" | "film" | "music";
 type Grocery = { id: number; text: string; done: boolean };
 type MediaItem = { id: number; type: MediaType; title: string; author?: string };
 type Wx = { city: string; tempF: number; label: string; rainLine: string };
+type Note = { id: number; text: string };
+type Chore = { id: number; name: string; last_done: string | null };
+
+const DRAFT_KEY = "the-lab:draft";
+
+// Most-neglected first: never-done (null) chores, then oldest last_done.
+function sortChores(a: Chore, b: Chore): number {
+  if (a.last_done === b.last_done) return a.id - b.id;
+  if (a.last_done === null) return -1;
+  if (b.last_done === null) return 1;
+  return a.last_done < b.last_done ? -1 : 1;
+}
 
 const DAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 const MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
@@ -57,6 +69,10 @@ function pad(n: number): string {
   return n < 10 ? "0" + n : String(n);
 }
 
+function ymd(d: Date): string {
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+}
+
 export default function Home() {
   const [now, setNow] = useState<Date | null>(null);
   const [mode, setMode] = useState<Mode>("auto");
@@ -87,8 +103,13 @@ export default function Home() {
   const [radarFilter, setRadarFilter] = useState<"all" | MediaType>("all");
   const [mediaInput, setMediaInput] = useState("");
 
-  const [focusDone, setFocusDone] = useState(false);
-  const [streak, setStreak] = useState(6);
+  const [draft, setDraft] = useState("");
+  const [pins, setPins] = useState<Note[]>([]);
+
+  const [chores, setChores] = useState<Chore[]>([]);
+  const [streak, setStreak] = useState(0);
+  const [lastDoneDate, setLastDoneDate] = useState<string | null>(null);
+
   const [sparkIndex, setSparkIndex] = useState(0);
 
   const [remaining, setRemaining] = useState(0);
@@ -111,6 +132,11 @@ export default function Home() {
   }, []);
 
   useEffect(() => {
+    const saved = typeof window !== "undefined" ? window.localStorage.getItem(DRAFT_KEY) : null;
+    if (saved) setDraft(saved);
+  }, []);
+
+  useEffect(() => {
     if (!supabase) return;
     let alive = true;
     (async () => {
@@ -125,6 +151,29 @@ export default function Home() {
         .select("id,type,title,author")
         .order("created_at");
       if (alive && r) setRadar(r as MediaItem[]);
+
+      const { data: n } = await supabase!
+        .from("notes")
+        .select("id,text")
+        .order("created_at");
+      if (alive && n) setPins(n as Note[]);
+
+      const { data: c } = await supabase!
+        .from("chores")
+        .select("id,name,last_done")
+        .order("last_done", { ascending: true, nullsFirst: true })
+        .order("created_at");
+      if (alive && c) setChores(c as Chore[]);
+
+      const { data: m } = await supabase!
+        .from("app_meta")
+        .select("streak,last_done_date")
+        .eq("id", 1)
+        .single();
+      if (alive && m) {
+        setStreak(m.streak ?? 0);
+        setLastDoneDate(m.last_done_date ?? null);
+      }
     })();
     return () => { alive = false; };
   }, []);
@@ -200,10 +249,46 @@ export default function Home() {
     say("added to your radar");
   };
 
-  const completeFocus = () => {
-    setStreak((s) => s + 1);
-    setFocusDone(true);
-    say("counter's clean · streak " + (streak + 1));
+  const pinNote = async () => {
+    const v = draft.trim();
+    if (!v) return;
+    setDraft("");
+    if (typeof window !== "undefined") window.localStorage.removeItem(DRAFT_KEY);
+    if (supabase) {
+      const { data } = await supabase
+        .from("notes")
+        .insert({ text: v })
+        .select("id,text")
+        .single();
+      if (data) setPins((p) => [...p, data as Note]);
+    } else {
+      setPins((p) => [...p, { id: nextId.current++, text: v }]);
+    }
+    say("pinned to the wall");
+  };
+
+  const focusChore = chores[0];
+
+  const completeFocus = async () => {
+    if (!focusChore) return;
+    const nowDate = new Date();
+    const today = ymd(nowDate);
+    const yesterday = ymd(new Date(nowDate.getTime() - 86400000));
+    const newStreak =
+      lastDoneDate === today ? streak || 1 : lastDoneDate === yesterday ? streak + 1 : 1;
+    const nowIso = nowDate.toISOString();
+
+    setChores((cs) =>
+      [...cs.map((c) => (c.id === focusChore.id ? { ...c, last_done: nowIso } : c))].sort(sortChores)
+    );
+    setStreak(newStreak);
+    setLastDoneDate(today);
+    say(`${focusChore.name.toLowerCase()} — done · streak ${newStreak}`);
+
+    if (supabase) {
+      await supabase.from("chores").update({ last_done: nowIso }).eq("id", focusChore.id);
+      await supabase.from("app_meta").update({ streak: newStreak, last_done_date: today }).eq("id", 1);
+    }
   };
 
   const shuffleSpark = () => setSparkIndex((i) => (i + 1) % SPARKS.length);
@@ -304,21 +389,25 @@ export default function Home() {
             <textarea
               className="dump"
               placeholder="what's rattling around today?"
-              defaultValue="weekend project idea: a little site that tracks every hot sauce i try…"
+              value={draft}
+              onChange={(e) => {
+                setDraft(e.target.value);
+                if (typeof window !== "undefined") window.localStorage.setItem(DRAFT_KEY, e.target.value);
+              }}
             />
             <div className="dumprow">
               <button className="iconbtn" aria-label="Voice capture" onClick={() => say("listening… (voice capture)")}>
                 🎙
               </button>
               <span className="note" style={{ flex: 1 }}>tap the mic to talk — easiest from the kitchen</span>
-              <button className="mini accent" style={{ marginTop: 0 }} onClick={() => say("pinned to the wall")}>
+              <button className="mini accent" style={{ marginTop: 0 }} onClick={pinNote}>
                 Pin it
               </button>
             </div>
             <div className="pins">
-              <span className="pin-chip">call the vet re: Rufus</span>
-              <span className="pin-chip">try the ramen place on Butler St</span>
-              <span className="pin-chip">essay: slow mornings</span>
+              {pins.map((p) => (
+                <span key={p.id} className="pin-chip">{p.text}</span>
+              ))}
             </div>
           </section>
 
@@ -400,10 +489,12 @@ export default function Home() {
           <section className="tile">
             <p className="eyebrow"><span className="dot" /> today&apos;s focus</p>
             <span className="fill" />
-            <div className="focus-big">{focusDone ? "Nice — all clear ✨" : "Wipe the counters"}</div>
+            <div className="focus-big">{focusChore ? focusChore.name : "All caught up ✨"}</div>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, marginTop: 6 }}>
               <span className="streak">🔥&#8202;<b>{streak}</b>&#8202;day streak</span>
-              <button className="mini accent" style={{ marginTop: 0 }} onClick={completeFocus}>Done</button>
+              {focusChore && (
+                <button className="mini accent" style={{ marginTop: 0 }} onClick={completeFocus}>Done</button>
+              )}
             </div>
           </section>
 
