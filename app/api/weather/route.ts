@@ -1,6 +1,7 @@
 // Weather endpoint. Source is Open-Meteo (free, no API key). The response
-// shape is deliberately provider-agnostic — { tempF, label, rainLine } — so
-// the data source can be swapped later without touching the UI.
+// shape is deliberately provider-agnostic so the data source can be swapped
+// later without touching the UI. Also returns sunrise/sunset (which drive the
+// time-of-day theme) and the current US air-quality index.
 
 export const revalidate = 900; // refresh the upstream data at most every 15 min
 
@@ -29,6 +30,19 @@ function hourLabel(iso: string): string {
   return `${h12} ${suffix}`;
 }
 
+// "2026-07-23T20:43" -> "8:43p"
+function clockLabel(iso: string): string {
+  const h = parseInt(iso.slice(11, 13), 10);
+  const m = iso.slice(14, 16);
+  const suffix = h < 12 ? "a" : "p";
+  const h12 = h % 12 || 12;
+  return `${h12}:${m}${suffix}`;
+}
+
+function minutesOf(iso: string): number {
+  return parseInt(iso.slice(11, 13), 10) * 60 + parseInt(iso.slice(14, 16), 10);
+}
+
 function rainLineFrom(currentTime: string, times: string[], probs: number[]): string {
   for (let i = 0; i < times.length; i++) {
     if (times[i] > currentTime && probs[i] >= 50) {
@@ -38,16 +52,32 @@ function rainLineFrom(currentTime: string, times: string[], probs: number[]): st
   return "no rain expected today";
 }
 
+function aqiLabelFor(aqi: number): string {
+  if (aqi <= 50) return "good";
+  if (aqi <= 100) return "moderate";
+  if (aqi <= 150) return "unhealthy for sensitive";
+  if (aqi <= 200) return "unhealthy";
+  if (aqi <= 300) return "very unhealthy";
+  return "hazardous";
+}
+
 export async function GET() {
-  const url =
+  const forecastUrl =
     `https://api.open-meteo.com/v1/forecast?latitude=${LOCATION.lat}&longitude=${LOCATION.lon}` +
-    `&current=temperature_2m,weather_code&hourly=precipitation_probability` +
+    `&current=temperature_2m,weather_code&hourly=precipitation_probability&daily=sunrise,sunset` +
     `&temperature_unit=fahrenheit&timezone=auto&forecast_days=1`;
 
+  const airUrl =
+    `https://air-quality-api.open-meteo.com/v1/air-quality?latitude=${LOCATION.lat}` +
+    `&longitude=${LOCATION.lon}&current=us_aqi&timezone=auto`;
+
   try {
-    const res = await fetch(url, { next: { revalidate } });
-    if (!res.ok) throw new Error(`upstream ${res.status}`);
-    const data = await res.json();
+    const [wxRes, airRes] = await Promise.all([
+      fetch(forecastUrl, { next: { revalidate } }),
+      fetch(airUrl, { next: { revalidate } }),
+    ]);
+    if (!wxRes.ok) throw new Error(`upstream ${wxRes.status}`);
+    const data = await wxRes.json();
 
     const tempF = Math.round(data.current.temperature_2m);
     const label = labelFor(data.current.weather_code);
@@ -57,7 +87,32 @@ export async function GET() {
       data.hourly.precipitation_probability
     );
 
-    return Response.json({ city: LOCATION.name, tempF, label, rainLine });
+    const sunriseIso: string = data.daily.sunrise[0];
+    const sunsetIso: string = data.daily.sunset[0];
+
+    let aqi: number | null = null;
+    let aqiLabel: string | null = null;
+    if (airRes.ok) {
+      const air = await airRes.json();
+      const v = air?.current?.us_aqi;
+      if (typeof v === "number") {
+        aqi = Math.round(v);
+        aqiLabel = aqiLabelFor(aqi);
+      }
+    }
+
+    return Response.json({
+      city: LOCATION.name,
+      tempF,
+      label,
+      rainLine,
+      sunrise: clockLabel(sunriseIso),
+      sunset: clockLabel(sunsetIso),
+      sunriseMin: minutesOf(sunriseIso),
+      sunsetMin: minutesOf(sunsetIso),
+      aqi,
+      aqiLabel,
+    });
   } catch {
     return Response.json({ error: "weather unavailable" }, { status: 502 });
   }

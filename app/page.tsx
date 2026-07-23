@@ -9,7 +9,19 @@ type MediaType = "book" | "film" | "music";
 
 type Grocery = { id: number; text: string; done: boolean };
 type MediaItem = { id: number; type: MediaType; title: string; author?: string };
-type Wx = { city: string; tempF: number; label: string; rainLine: string };
+type Wx = {
+  city: string;
+  tempF: number;
+  label: string;
+  rainLine: string;
+  sunrise?: string;
+  sunset?: string;
+  sunriseMin?: number;
+  sunsetMin?: number;
+  aqi?: number | null;
+  aqiLabel?: string | null;
+};
+type Recipe = { name: string; category: string; area: string; source: string };
 type Note = { id: number; text: string };
 type Chore = { id: number; name: string; last_done: string | null };
 type NewsItem = { title: string; source: string; link: string };
@@ -105,6 +117,15 @@ function autoMode(hour: number): Exclude<Mode, "auto"> {
   return "night";
 }
 
+// Time-of-day driven by actual sun times: morning is the first few hours after
+// sunrise, evening is golden-hour into dusk, night wraps around.
+function todFromSun(nowMin: number, sunriseMin: number, sunsetMin: number): Exclude<Mode, "auto"> {
+  if (nowMin < sunriseMin - 30 || nowMin >= sunsetMin + 60) return "night";
+  if (nowMin < sunriseMin + 210) return "morning";
+  if (nowMin >= sunsetMin - 90) return "evening";
+  return "day";
+}
+
 function greetFor(m: Exclude<Mode, "auto">): string {
   return { morning: "Good morning, Tom", day: "Hello, Tom", evening: "Good evening, Tom", night: "Late night, Tom" }[m];
 }
@@ -127,6 +148,7 @@ export default function Home() {
 
   const [news, setNews] = useState<NewsItem[]>([]);
   const [dismissals, setDismissals] = useState<Dismissal[]>([]);
+  const [recipe, setRecipe] = useState<Recipe | null>(null);
 
   const [toast, setToast] = useState<string | null>(null);
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -264,14 +286,32 @@ export default function Home() {
     return () => { alive = false; clearInterval(id); };
   }, []);
 
+  const loadRecipe = useCallback(async () => {
+    try {
+      const r = await fetch("/api/recipe");
+      if (!r.ok) return;
+      const d: Recipe = await r.json();
+      if (d && d.name) setRecipe(d);
+    } catch {
+      // leave the previous suggestion in place on failure
+    }
+  }, []);
+
+  useEffect(() => { loadRecipe(); }, [loadRecipe]);
+
   const say = useCallback((msg: string) => {
     setToast(msg);
     if (toastTimer.current) clearTimeout(toastTimer.current);
     toastTimer.current = setTimeout(() => setToast(null), 1900);
   }, []);
 
-  const hour = now ? now.getHours() : 9;
-  const tod = mode === "auto" ? autoMode(hour) : mode;
+  const nowMin = now ? now.getHours() * 60 + now.getMinutes() : 9 * 60;
+  const tod =
+    mode !== "auto"
+      ? mode
+      : wx && wx.sunriseMin != null && wx.sunsetMin != null
+      ? todFromSun(nowMin, wx.sunriseMin, wx.sunsetMin)
+      : autoMode(Math.floor(nowMin / 60));
   const timeStr = now ? `${((now.getHours() % 12) || 12)}:${pad(now.getMinutes())}` : "—:—";
   const dateStr = now ? `${DAYS[now.getDay()]}, ${now.getDate()} ${MONTHS[now.getMonth()]}` : "";
 
@@ -424,7 +464,14 @@ export default function Home() {
             </div>
             <div className="wx">
               {wx ? (
-                <>{wx.city} · <b>{wx.tempF}°</b> {wx.label} · {wx.rainLine}</>
+                <>
+                  {wx.city} · <b>{wx.tempF}°</b> {wx.label} · {wx.rainLine}
+                  <span className="wx-sub">
+                    {wx.aqi != null && `air ${wx.aqi} (${wx.aqiLabel})`}
+                    {wx.aqi != null && wx.sunrise && " · "}
+                    {wx.sunrise && `sun ↑${wx.sunrise} ↓${wx.sunset}`}
+                  </span>
+                </>
               ) : wxError ? (
                 "Pittsburgh · weather unavailable right now"
               ) : (
@@ -627,11 +674,22 @@ export default function Home() {
           </section>
 
           <section className="tile">
-            <p className="eyebrow"><span className="dot" /> dinner tonight</p>
+            <p className="eyebrow"><span className="dot" /> dinner idea</p>
+            <div className="big" style={{ fontSize: "1.2rem", marginTop: 2 }}>
+              {recipe ? recipe.name : "finding an idea…"}
+            </div>
+            {recipe && <p className="note">{recipe.area} · {recipe.category}</p>}
             <span className="fill" />
-            <div className="big">Lemon garlic pasta</div>
-            <p className="note">25 min · you&apos;ve got most of it in already</p>
-            <button className="mini accent" onClick={() => say("opening cooking mode — big steps + timers")}>Cook it →</button>
+            <div style={{ display: "flex", gap: 8 }}>
+              <button
+                className="mini accent"
+                style={{ marginTop: 0 }}
+                onClick={() => recipe?.source && window.open(recipe.source, "_blank", "noopener,noreferrer")}
+              >
+                Cook it →
+              </button>
+              <button className="mini" style={{ marginTop: 0 }} onClick={loadRecipe}>Another</button>
+            </div>
           </section>
 
           <section className="tile">

@@ -30,7 +30,8 @@ export async function proxy(request: NextRequest) {
   // Google sign-in is still being configured.
   if (process.env.AUTH_REQUIRED === "true") {
     const path = request.nextUrl.pathname;
-    const isPublic = path.startsWith("/login") || path.startsWith("/auth");
+    const isPublic =
+      path.startsWith("/login") || path.startsWith("/auth") || path.startsWith("/api");
     const allowed = process.env.ALLOWED_EMAIL?.toLowerCase();
     const isAllowedUser = !!user && (!allowed || user.email?.toLowerCase() === allowed);
 
