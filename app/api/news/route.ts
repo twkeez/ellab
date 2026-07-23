@@ -18,7 +18,7 @@ const FEEDS: { url: string; source: string }[] = [
 ];
 
 const PER_SOURCE = 3; // cap per outlet so none floods the feed
-const TOTAL = 14;
+const TOTAL = 20; // extra headroom so client-side filtering/ranking still fills the tile
 
 const parser = new Parser({ timeout: 10000 });
 

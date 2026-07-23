@@ -139,10 +139,12 @@ html, body { margin: 0; padding: 0; }
 .media .gtext b { font-weight: 600; }
 .media .gtext i { font-style: normal; color: var(--text-soft); font-size: 12px; }
 
-.news li { align-items: flex-start; padding: 8px 0; }
-.news a { display: block; color: var(--text); text-decoration: none; font-weight: 500; font-size: 13px; line-height: 1.35; }
+.news li { align-items: flex-start; padding: 8px 0; gap: 8px; }
+.news a { flex: 1; display: block; color: var(--text); text-decoration: none; font-weight: 500; font-size: 13px; line-height: 1.35; }
 .news a:hover { color: var(--accent); }
 .news .src { display: block; font-family: var(--mono); font-size: 9.5px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-faint); margin-bottom: 3px; }
+.news-x { flex-shrink: 0; border: 0; background: transparent; color: var(--text-faint); cursor: pointer; font-size: 17px; line-height: 1; padding: 0 2px; margin-top: -1px; opacity: 0.45; transition: opacity .15s, color .15s; }
+.news-x:hover { opacity: 1; color: var(--text); }
 
 .timer-num { font-weight: 300; font-size: 2.6rem; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; line-height: 1; }
 .presets { display: flex; gap: 6px; margin-top: auto; }

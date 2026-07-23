@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "@/lib/supabase";
 
 type Mode = "auto" | "morning" | "day" | "evening" | "night";
@@ -13,6 +13,49 @@ type Wx = { city: string; tempF: number; label: string; rainLine: string };
 type Note = { id: number; text: string };
 type Chore = { id: number; name: string; last_done: string | null };
 type NewsItem = { title: string; source: string; link: string };
+type Dismissal = { title: string; link: string; source: string };
+
+// Words too common to carry meaning — ignored when learning what you dislike.
+const STOPWORDS = new Set([
+  "the", "a", "an", "and", "or", "but", "for", "to", "of", "in", "on", "with", "at",
+  "by", "from", "as", "is", "are", "was", "were", "be", "this", "that", "these", "those",
+  "new", "how", "why", "what", "when", "who", "after", "over", "into", "its", "his", "her",
+  "their", "they", "will", "has", "have", "had", "not", "you", "your", "out", "up", "off",
+  "about", "more", "most", "than", "then", "some", "just", "can", "could", "would", "should",
+]);
+
+function keywords(title: string): string[] {
+  return Array.from(
+    new Set(
+      title
+        .toLowerCase()
+        .replace(/[^a-z0-9\s]/g, " ")
+        .split(/\s+/)
+        .filter((w) => w.length >= 4 && !STOPWORDS.has(w))
+    )
+  );
+}
+
+// Hide anything you've dismissed, then push down stories that share the outlet
+// or recurring words of things you keep dismissing. Recency breaks ties.
+function rankNews(news: NewsItem[], dismissals: Dismissal[]): NewsItem[] {
+  const dismissedLinks = new Set(dismissals.map((d) => d.link));
+  const sourcePenalty: Record<string, number> = {};
+  const wordPenalty: Record<string, number> = {};
+  for (const d of dismissals) {
+    sourcePenalty[d.source] = (sourcePenalty[d.source] ?? 0) + 1;
+    for (const w of keywords(d.title)) wordPenalty[w] = (wordPenalty[w] ?? 0) + 1;
+  }
+  return news
+    .filter((n) => !dismissedLinks.has(n.link))
+    .map((n, idx) => {
+      let penalty = sourcePenalty[n.source] ?? 0;
+      for (const w of keywords(n.title)) penalty += wordPenalty[w] ?? 0;
+      return { n, idx, penalty };
+    })
+    .sort((a, b) => a.penalty - b.penalty || a.idx - b.idx)
+    .map((s) => s.n);
+}
 
 const DRAFT_KEY = "the-lab:draft";
 
@@ -83,6 +126,7 @@ export default function Home() {
   const [wxError, setWxError] = useState(false);
 
   const [news, setNews] = useState<NewsItem[]>([]);
+  const [dismissals, setDismissals] = useState<Dismissal[]>([]);
 
   const [toast, setToast] = useState<string | null>(null);
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -177,6 +221,11 @@ export default function Home() {
         setStreak(m.streak ?? 0);
         setLastDoneDate(m.last_done_date ?? null);
       }
+
+      const { data: nd } = await supabase!
+        .from("news_dismissals")
+        .select("title,link,source");
+      if (alive && nd) setDismissals(nd as Dismissal[]);
     })();
     return () => { alive = false; };
   }, []);
@@ -318,6 +367,13 @@ export default function Home() {
     window.location.href = "/login";
   };
 
+  const dismissNews = (n: NewsItem) => {
+    setDismissals((d) => [...d, { title: n.title, link: n.link, source: n.source }]);
+    if (supabase) {
+      void supabase.from("news_dismissals").insert({ title: n.title, link: n.link, source: n.source });
+    }
+  };
+
   const fmtTimer = (s: number) => `${pad(Math.floor(s / 60))}:${pad(s % 60)}`;
 
   const startTimer = (min: number) => {
@@ -342,6 +398,7 @@ export default function Home() {
   };
 
   const visibleRadar = radar.filter((m) => radarFilter === "all" || m.type === radarFilter);
+  const rankedNews = useMemo(() => rankNews(news, dismissals), [news, dismissals]);
 
   return (
     <div className="hub" data-tod={tod} data-accent={accent}>
@@ -535,14 +592,22 @@ export default function Home() {
           <section className="tile c2 r2">
             <p className="eyebrow"><span className="dot" /> the feed · books, film &amp; pittsburgh</p>
             <ul className="list news">
-              {news.length === 0 ? (
+              {rankedNews.length === 0 ? (
                 <li><span className="gtext" style={{ color: "var(--text-soft)" }}>catching the latest…</span></li>
               ) : (
-                news.slice(0, 5).map((n, idx) => (
-                  <li key={idx}>
+                rankedNews.slice(0, 5).map((n) => (
+                  <li key={n.link}>
                     <a href={n.link} target="_blank" rel="noopener noreferrer">
                       <span className="src">{n.source}</span>{n.title}
                     </a>
+                    <button
+                      className="news-x"
+                      aria-label="Show less like this"
+                      title="Show less like this"
+                      onClick={() => dismissNews(n)}
+                    >
+                      ×
+                    </button>
                   </li>
                 ))
               )}
