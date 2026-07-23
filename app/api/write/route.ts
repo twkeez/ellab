@@ -53,9 +53,10 @@ export async function POST(request: Request) {
     return Response.json({ error: "not authorized" }, { status: 401 });
   }
 
+  // No key configured yet — this is an expected state, not a failure.
   if (!process.env.ANTHROPIC_API_KEY) {
     return Response.json(
-      { error: "The writing studio needs an ANTHROPIC_API_KEY to be configured." },
+      { error: "Claude isn't connected yet. Everything else here works — drafts save as you type." },
       { status: 503 }
     );
   }

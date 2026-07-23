@@ -38,6 +38,7 @@ export default function WriteStudio() {
   const [aiText, setAiText] = useState<string | null>(null);
   const [aiBusy, setAiBusy] = useState<string | null>(null);
   const [aiError, setAiError] = useState<string | null>(null);
+  const [aiSoft, setAiSoft] = useState(false);
   const [question, setQuestion] = useState("");
 
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -127,6 +128,7 @@ export default function WriteStudio() {
   const runAction = async (action: string) => {
     setAiBusy(action);
     setAiError(null);
+    setAiSoft(false);
     setAiText(null);
     try {
       const res = await fetch("/api/write", {
@@ -135,8 +137,12 @@ export default function WriteStudio() {
         body: JSON.stringify({ action, title, body, question }),
       });
       const data = await res.json();
-      if (!res.ok) setAiError(data.error ?? "Something went wrong.");
-      else setAiText(data.text);
+      if (!res.ok) {
+        setAiError(data.error ?? "Something went wrong.");
+        setAiSoft(res.status === 503); // not-configured is expected, not an error
+      } else {
+        setAiText(data.text);
+      }
     } catch {
       setAiError("Couldn't reach the studio. Check your connection.");
     } finally {
@@ -247,7 +253,9 @@ export default function WriteStudio() {
 
             <div className="ai-out">
               {aiBusy && <p className="note">Claude is thinking… this takes a few seconds.</p>}
-              {aiError && <p className="note" style={{ color: "#d9534f" }}>{aiError}</p>}
+              {aiError && (
+                <p className="note" style={{ color: aiSoft ? "var(--text-soft)" : "#d9534f" }}>{aiError}</p>
+              )}
               {aiText && <div className="ai-text">{aiText}</div>}
             </div>
 
