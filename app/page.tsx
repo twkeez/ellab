@@ -9,6 +9,7 @@ type Accent = "honey" | "green" | "teal" | "blue" | "purple" | "pink";
 type MediaType = "book" | "film" | "music" | "game";
 
 type Grocery = { id: number; text: string; done: boolean };
+type Todo = { id: number; text: string; done: boolean };
 type MediaItem = { id: number; type: MediaType; title: string; author?: string };
 type Wx = {
   city: string;
@@ -81,13 +82,14 @@ const PREFIX_MAP: Record<string, string> = {
   music: "music", album: "music", albums: "music", song: "music", listen: "music",
   game: "game", games: "game", videogame: "game", videogames: "game", play: "game",
   grocery: "groceries", groceries: "groceries", buy: "groceries", shop: "groceries", food: "groceries",
-  chore: "chore", chores: "chore", clean: "chore", todo: "chore",
+  chore: "chore", chores: "chore", clean: "chore",
+  todo: "todo", todos: "todo", task: "todo", tasks: "todo",
   note: "note", idea: "note", thought: "note",
 };
 
 const DEST_LABEL: Record<string, string> = {
   book: "books", film: "films", music: "music", game: "games",
-  groceries: "groceries", chore: "chores", note: "notes",
+  groceries: "groceries", chore: "chores", todo: "to-dos", note: "notes",
 };
 
 const RADAR_LABEL: Record<string, string> = {
@@ -194,6 +196,9 @@ export default function Home() {
   ]);
   const [grocInput, setGrocInput] = useState("");
 
+  const [todos, setTodos] = useState<Todo[]>([]);
+  const [todoInput, setTodoInput] = useState("");
+
   const [radar, setRadar] = useState<MediaItem[]>([
     { id: 1, type: "book", title: "Tomorrow, and Tomorrow, and Tomorrow", author: "Gabrielle Zevin" },
     { id: 2, type: "film", title: "Perfect Days", author: "Wim Wenders" },
@@ -258,6 +263,12 @@ export default function Home() {
         .select("id,text")
         .order("created_at");
       if (alive && n) setPins(n as Note[]);
+
+      const { data: td } = await supabase!
+        .from("todos")
+        .select("id,text,done")
+        .order("created_at");
+      if (alive && td) setTodos(td as Todo[]);
 
       const { data: c } = await supabase!
         .from("chores")
@@ -372,6 +383,28 @@ export default function Home() {
     say("added to groceries");
   };
 
+  const toggleTodo = (t: Todo) => {
+    const next = !t.done;
+    setTodos((ts) => ts.map((x) => (x.id === t.id ? { ...x, done: next } : x)));
+    if (supabase) {
+      void supabase.from("todos").update({ done: next }).eq("id", t.id);
+    }
+  };
+
+  const addTodo = async () => {
+    const v = todoInput.trim();
+    if (!v) return;
+    setTodoInput("");
+    if (supabase) {
+      const { data } = await supabase
+        .from("todos").insert({ text: v, done: false }).select("id,text,done").single();
+      if (data) setTodos((ts) => [...ts, data as Todo]);
+    } else {
+      setTodos((ts) => [...ts, { id: nextId.current++, text: v, done: false }]);
+    }
+    say("added to to-dos");
+  };
+
   const addMedia = async () => {
     const v = mediaInput.trim();
     if (!v) return;
@@ -407,6 +440,14 @@ export default function Home() {
         if (data) setRadar((r) => [...r, data as MediaItem]);
       } else {
         setRadar((r) => [...r, { id: nextId.current++, type, title: text }]);
+      }
+    } else if (dest === "todo") {
+      if (supabase) {
+        const { data } = await supabase
+          .from("todos").insert({ text, done: false }).select("id,text,done").single();
+        if (data) setTodos((ts) => [...ts, data as Todo]);
+      } else {
+        setTodos((ts) => [...ts, { id: nextId.current++, text, done: false }]);
       }
     } else if (dest === "chore") {
       if (supabase) {
@@ -652,7 +693,8 @@ export default function Home() {
               </button>
               <span className="note" style={{ flex: 1 }}>
                 <code className="pfx">book</code> <code className="pfx">film</code> <code className="pfx">music</code>{" "}
-                <code className="pfx">game</code> <code className="pfx">groceries</code> <code className="pfx">chore</code> — or a thought
+                <code className="pfx">game</code> <code className="pfx">todo</code> <code className="pfx">groceries</code>{" "}
+                <code className="pfx">chore</code> — or a thought
               </span>
               <button className="mini accent" style={{ marginTop: 0 }} onClick={sendDump}>
                 {sendLabel}
@@ -763,6 +805,36 @@ export default function Home() {
                 ))
               )}
             </ul>
+          </section>
+
+          <section className="tile c2 r2">
+            <p className="eyebrow"><span className="dot" /> to-do</p>
+            <ul className="list">
+              {[...todos].sort((a, b) => Number(a.done) - Number(b.done)).map((t) => (
+                <li key={t.id} className={t.done ? "done" : ""}>
+                  <button
+                    className={"check" + (t.done ? " done" : "")}
+                    aria-label={"Toggle " + t.text}
+                    aria-pressed={t.done}
+                    onClick={() => toggleTodo(t)}
+                  >
+                    {t.done ? "✓" : ""}
+                  </button>
+                  <span className="gtext">{t.text}</span>
+                </li>
+              ))}
+            </ul>
+            <span className="fill" />
+            <div className="addrow">
+              <input
+                placeholder="add a to-do…"
+                aria-label="Add a to-do"
+                value={todoInput}
+                onChange={(e) => setTodoInput(e.target.value)}
+                onKeyDown={(e) => { if (e.key === "Enter") addTodo(); }}
+              />
+              <button className="iconbtn" aria-label="Add" onClick={addTodo}>+</button>
+            </div>
           </section>
 
           <section className="tile">
