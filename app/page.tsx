@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "@/lib/supabase";
+import { WxIcon, SunriseIcon, SunsetIcon, DropletIcon, aqiColor } from "@/components/WxIcons";
 
 type Mode = "auto" | "morning" | "day" | "evening" | "night";
 type Accent = "honey" | "green" | "teal" | "blue" | "purple" | "pink";
@@ -13,6 +14,7 @@ type Wx = {
   city: string;
   tempF: number;
   label: string;
+  icon?: string;
   rainLine: string;
   sunrise?: string;
   sunset?: string;
@@ -465,17 +467,34 @@ export default function Home() {
             <div className="wx">
               {wx ? (
                 <>
-                  {wx.city} · <b>{wx.tempF}°</b> {wx.label} · {wx.rainLine}
-                  <span className="wx-sub">
-                    {wx.aqi != null && `air ${wx.aqi} (${wx.aqiLabel})`}
-                    {wx.aqi != null && wx.sunrise && " · "}
-                    {wx.sunrise && `sun ↑${wx.sunrise} ↓${wx.sunset}`}
-                  </span>
+                  <div className="wx-now">
+                    <WxIcon kind={wx.icon} size={26} style={{ color: "var(--accent)" }} />
+                    <span className="wx-temp">{wx.tempF}°</span>
+                    <span className="wx-cond">{wx.city} · {wx.label}</span>
+                  </div>
+                  <div className="wx-chips">
+                    <span className="wx-chip">
+                      <DropletIcon />
+                      {wx.rainLine.startsWith("no rain") ? "no rain" : wx.rainLine.replace("rain likely around ", "rain ~")}
+                    </span>
+                    {wx.aqi != null && (
+                      <span className="wx-chip">
+                        <span className="aqi-dot" style={{ background: aqiColor(wx.aqi) }} />
+                        air {wx.aqi} · {wx.aqiLabel}
+                      </span>
+                    )}
+                    {wx.sunrise && (
+                      <span className="wx-chip"><SunriseIcon />{wx.sunrise}</span>
+                    )}
+                    {wx.sunset && (
+                      <span className="wx-chip"><SunsetIcon />{wx.sunset}</span>
+                    )}
+                  </div>
                 </>
               ) : wxError ? (
-                "Pittsburgh · weather unavailable right now"
+                <span className="wx-cond">Pittsburgh · weather unavailable right now</span>
               ) : (
-                "Pittsburgh · checking the sky…"
+                <span className="wx-cond">Pittsburgh · checking the sky…</span>
               )}
             </div>
           </div>

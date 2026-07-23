@@ -23,6 +23,14 @@ function labelFor(code: number): string {
   return "clear";
 }
 
+function iconFor(code: number): string {
+  if (code === 0 || code === 1) return "clear";
+  if ((code >= 51 && code <= 67) || (code >= 80 && code <= 82)) return "rain";
+  if ((code >= 71 && code <= 77) || (code >= 85 && code <= 86)) return "snow";
+  if (code >= 95) return "storm";
+  return "cloud";
+}
+
 function hourLabel(iso: string): string {
   const h = parseInt(iso.slice(11, 13), 10);
   const suffix = h < 12 ? "AM" : "PM";
@@ -81,6 +89,7 @@ export async function GET() {
 
     const tempF = Math.round(data.current.temperature_2m);
     const label = labelFor(data.current.weather_code);
+    const icon = iconFor(data.current.weather_code);
     const rainLine = rainLineFrom(
       data.current.time,
       data.hourly.time,
@@ -105,6 +114,7 @@ export async function GET() {
       city: LOCATION.name,
       tempF,
       label,
+      icon,
       rainLine,
       sunrise: clockLabel(sunriseIso),
       sunset: clockLabel(sunsetIso),

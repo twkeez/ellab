@@ -67,9 +67,14 @@ html, body { margin: 0; padding: 0; }
 .time { font-weight: 300; font-size: clamp(3rem, 8vw, 5rem); line-height: 0.9; letter-spacing: -0.03em; font-variant-numeric: tabular-nums; }
 .greet { font-weight: 600; font-size: clamp(1.1rem, 2.4vw, 1.5rem); letter-spacing: -0.01em; }
 .date { font-size: 13.5px; color: var(--text-soft); margin-top: 2px; }
-.wx { font-size: 13.5px; color: var(--text-soft); margin-top: 8px; max-width: 44ch; }
-.wx b { color: var(--text); font-weight: 600; }
-.wx-sub { display: block; margin-top: 3px; font-size: 12.5px; color: var(--text-faint); }
+.wx { margin-top: 10px; }
+.wx-now { display: flex; align-items: center; gap: 9px; }
+.wx-temp { font-size: 1.6rem; font-weight: 600; letter-spacing: -0.02em; color: var(--text); line-height: 1; }
+.wx-cond { font-size: 13.5px; color: var(--text-soft); }
+.wx-chips { display: flex; flex-wrap: wrap; gap: 7px 16px; margin-top: 8px; }
+.wx-chip { display: inline-flex; align-items: center; gap: 5px; font-size: 12.5px; color: var(--text-soft); }
+.wx-chip svg { color: var(--text-faint); flex-shrink: 0; }
+.aqi-dot { width: 9px; height: 9px; border-radius: 50%; display: inline-block; }
 
 .topright { display: flex; flex-direction: column; align-items: flex-end; gap: 10px; }
 .chrome { display: inline-flex; align-items: center; gap: 8px; padding: 6px; border-radius: 999px; background: var(--surface); border: 1px solid var(--border);
