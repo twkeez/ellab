@@ -12,6 +12,7 @@ type MediaItem = { id: number; type: MediaType; title: string; author?: string }
 type Wx = { city: string; tempF: number; label: string; rainLine: string };
 type Note = { id: number; text: string };
 type Chore = { id: number; name: string; last_done: string | null };
+type NewsItem = { title: string; source: string; link: string };
 
 const DRAFT_KEY = "the-lab:draft";
 
@@ -80,6 +81,8 @@ export default function Home() {
 
   const [wx, setWx] = useState<Wx | null>(null);
   const [wxError, setWxError] = useState(false);
+
+  const [news, setNews] = useState<NewsItem[]>([]);
 
   const [toast, setToast] = useState<string | null>(null);
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -192,6 +195,23 @@ export default function Home() {
     };
     load();
     const id = setInterval(load, 900000); // refresh every 15 min
+    return () => { alive = false; clearInterval(id); };
+  }, []);
+
+  useEffect(() => {
+    let alive = true;
+    const load = async () => {
+      try {
+        const r = await fetch("/api/news");
+        if (!r.ok) return;
+        const d = await r.json();
+        if (alive && Array.isArray(d.items)) setNews(d.items);
+      } catch {
+        // leave the feed empty on failure
+      }
+    };
+    load();
+    const id = setInterval(load, 1800000); // refresh every 30 min
     return () => { alive = false; clearInterval(id); };
   }, []);
 
@@ -510,6 +530,23 @@ export default function Home() {
               />
               <button className="iconbtn" aria-label="Add" onClick={addMedia}>+</button>
             </div>
+          </section>
+
+          <section className="tile c2 r2">
+            <p className="eyebrow"><span className="dot" /> the feed · books, film &amp; pittsburgh</p>
+            <ul className="list news">
+              {news.length === 0 ? (
+                <li><span className="gtext" style={{ color: "var(--text-soft)" }}>catching the latest…</span></li>
+              ) : (
+                news.slice(0, 5).map((n, idx) => (
+                  <li key={idx}>
+                    <a href={n.link} target="_blank" rel="noopener noreferrer">
+                      <span className="src">{n.source}</span>{n.title}
+                    </a>
+                  </li>
+                ))
+              )}
+            </ul>
           </section>
 
           <section className="tile">
