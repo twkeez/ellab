@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import Link from "next/link";
 import { supabase } from "@/lib/supabase";
 import { WxIcon, SunriseIcon, SunsetIcon, DropletIcon, aqiColor } from "@/components/WxIcons";
 
@@ -204,6 +205,7 @@ export default function Home() {
   const [news, setNews] = useState<NewsItem[]>([]);
   const [dismissals, setDismissals] = useState<Dismissal[]>([]);
   const [recipe, setRecipe] = useState<Recipe | null>(null);
+  const [latestDraft, setLatestDraft] = useState<{ title: string; words: number } | null>(null);
   const [otd, setOtd] = useState<OtdItem[]>([]);
   const [otdOffset, setOtdOffset] = useState(0);
 
@@ -314,6 +316,17 @@ export default function Home() {
         .from("news_dismissals")
         .select("title,link,source");
       if (alive && nd) setDismissals(nd as Dismissal[]);
+
+      const { data: dr } = await supabase!
+        .from("drafts")
+        .select("title,body")
+        .order("updated_at", { ascending: false })
+        .limit(1);
+      if (alive && dr && dr.length) {
+        const d = dr[0] as { title: string; body: string };
+        const w = d.body.trim() ? d.body.trim().split(/\s+/).length : 0;
+        setLatestDraft({ title: d.title || "Untitled", words: w });
+      }
     })();
     return () => { alive = false; };
   }, []);
@@ -1014,11 +1027,15 @@ export default function Home() {
           <section className="tile c2 studio">
             <p className="eyebrow"><span className="dot" /> writing studio · ai</p>
             <span className="fill" />
-            <div className="draft">&ldquo;Slow mornings&rdquo; — 640 words</div>
-            <p className="note">last edit 2 days ago · Claude suggested 3 new directions</p>
+            <div className="draft">
+              {latestDraft ? `“${latestDraft.title}” — ${latestDraft.words} words` : "Nothing started yet"}
+            </div>
+            <p className="note">fiction &amp; creative · Claude helps you develop it</p>
             <div className="row">
-              <button className="mini accent" style={{ marginTop: 0 }} onClick={() => say("opening the writing studio")}>Resume writing</button>
-              <button className="mini" style={{ marginTop: 0 }} onClick={() => say("fresh draft — Claude's ready")}>New idea</button>
+              <Link href="/write" className="mini accent" style={{ marginTop: 0 }}>
+                {latestDraft ? "Resume writing" : "Start writing"}
+              </Link>
+              <Link href="/write" className="mini" style={{ marginTop: 0 }}>New idea</Link>
             </div>
           </section>
 

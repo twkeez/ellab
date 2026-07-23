@@ -30,8 +30,13 @@ export async function proxy(request: NextRequest) {
   // Google sign-in is still being configured.
   if (process.env.AUTH_REQUIRED === "true") {
     const path = request.nextUrl.pathname;
+    // Only the free, no-user-data endpoints are public. Anything that costs
+    // money or touches private data (e.g. /api/write) stays behind the gate.
+    const PUBLIC_API = ["/api/weather", "/api/news", "/api/recipe", "/api/onthisday"];
     const isPublic =
-      path.startsWith("/login") || path.startsWith("/auth") || path.startsWith("/api");
+      path.startsWith("/login") ||
+      path.startsWith("/auth") ||
+      PUBLIC_API.some((p) => path.startsWith(p));
     const allowed = process.env.ALLOWED_EMAIL?.toLowerCase();
     const isAllowedUser = !!user && (!allowed || user.email?.toLowerCase() === allowed);
 
