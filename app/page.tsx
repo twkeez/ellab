@@ -25,6 +25,27 @@ type Wx = {
   aqiLabel?: string | null;
 };
 type Recipe = { name: string; category: string; area: string; source: string };
+type OtdItem = { year: number; text: string; link: string | null };
+
+// Moon phase from date alone — no API needed.
+const SYNODIC = 29.530588853;
+const NEW_MOON_2000 = Date.UTC(2000, 0, 6, 18, 14);
+const MOONS = [
+  { glyph: "🌑", name: "new moon" },
+  { glyph: "🌒", name: "waxing crescent" },
+  { glyph: "🌓", name: "first quarter" },
+  { glyph: "🌔", name: "waxing gibbous" },
+  { glyph: "🌕", name: "full moon" },
+  { glyph: "🌖", name: "waning gibbous" },
+  { glyph: "🌗", name: "last quarter" },
+  { glyph: "🌘", name: "waning crescent" },
+];
+
+function moonPhase(d: Date) {
+  const days = (d.getTime() - NEW_MOON_2000) / 86400000;
+  const frac = (((days % SYNODIC) + SYNODIC) % SYNODIC) / SYNODIC;
+  return MOONS[Math.round(frac * 8) % 8];
+}
 type Note = { id: number; text: string };
 type Chore = { id: number; name: string; last_done: string | null };
 type NewsItem = { title: string; source: string; link: string };
@@ -183,6 +204,8 @@ export default function Home() {
   const [news, setNews] = useState<NewsItem[]>([]);
   const [dismissals, setDismissals] = useState<Dismissal[]>([]);
   const [recipe, setRecipe] = useState<Recipe | null>(null);
+  const [otd, setOtd] = useState<OtdItem[]>([]);
+  const [otdOffset, setOtdOffset] = useState(0);
 
   const [toast, setToast] = useState<string | null>(null);
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -341,6 +364,21 @@ export default function Home() {
   }, []);
 
   useEffect(() => { loadRecipe(); }, [loadRecipe]);
+
+  useEffect(() => {
+    let alive = true;
+    (async () => {
+      try {
+        const r = await fetch("/api/onthisday");
+        if (!r.ok) return;
+        const d = await r.json();
+        if (alive && Array.isArray(d.items)) setOtd(d.items);
+      } catch {
+        // leave the tile empty on failure
+      }
+    })();
+    return () => { alive = false; };
+  }, []);
 
   const say = useCallback((msg: string) => {
     setToast(msg);
@@ -635,6 +673,12 @@ export default function Home() {
                     {wx.sunset && (
                       <span className="wx-chip"><SunsetIcon />{wx.sunset}</span>
                     )}
+                    {now && (
+                      <span className="wx-chip">
+                        <span aria-hidden="true">{moonPhase(now).glyph}</span>
+                        {moonPhase(now).name}
+                      </span>
+                    )}
                   </div>
                 </>
               ) : wxError ? (
@@ -885,6 +929,37 @@ export default function Home() {
               />
               <button className="iconbtn" aria-label="Add" onClick={addTodo}>+</button>
             </div>
+          </section>
+
+          <section className="tile c2 r2">
+            <p className="eyebrow"><span className="dot" /> on this day</p>
+            <ul className="list otd">
+              {otd.length === 0 ? (
+                <li><span className="gtext" style={{ color: "var(--text-soft)" }}>digging through history…</span></li>
+              ) : (
+                [0, 1, 2].map((i) => {
+                  const e = otd[(otdOffset + i) % otd.length];
+                  return (
+                    <li key={`${e.year}-${i}`}>
+                      <span className="otd-year">{e.year}</span>
+                      <span className="gtext">
+                        {e.link ? (
+                          <a href={e.link} target="_blank" rel="noopener noreferrer">{e.text}</a>
+                        ) : (
+                          e.text
+                        )}
+                      </span>
+                    </li>
+                  );
+                })
+              )}
+            </ul>
+            <span className="fill" />
+            {otd.length > 3 && (
+              <button className="mini" onClick={() => setOtdOffset((o) => (o + 3) % otd.length)}>
+                More
+              </button>
+            )}
           </section>
 
           <section className="tile">
