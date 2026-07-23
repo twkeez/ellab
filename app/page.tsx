@@ -378,6 +378,24 @@ export default function Home() {
 
   useEffect(() => { loadRecipe(); }, [loadRecipe]);
 
+  const saveRecipe = async () => {
+    if (!recipe) return;
+    if (!supabase) return;
+    const { data: existing } = await supabase
+      .from("recipes").select("id").eq("name", recipe.name).limit(1);
+    if (existing && existing.length) {
+      say("already in your recipes");
+      return;
+    }
+    await supabase.from("recipes").insert({
+      name: recipe.name,
+      category: recipe.category,
+      area: recipe.area,
+      source: recipe.source,
+    });
+    say("saved to your recipes");
+  };
+
   useEffect(() => {
     let alive = true;
     (async () => {
@@ -991,19 +1009,20 @@ export default function Home() {
 
           <section className="tile">
             <p className="eyebrow"><span className="dot" /> dinner idea</p>
-            <div className="big" style={{ fontSize: "1.2rem", marginTop: 2 }}>
+            <div className="big recipe-name" style={{ fontSize: "1.2rem", marginTop: 2 }}>
               {recipe ? recipe.name : "finding an idea…"}
             </div>
             {recipe && <p className="note">{recipe.area} · {recipe.category}</p>}
             <span className="fill" />
-            <div style={{ display: "flex", gap: 8 }}>
+            <div style={{ display: "flex", gap: 7, flexWrap: "wrap" }}>
               <button
                 className="mini accent"
                 style={{ marginTop: 0 }}
                 onClick={() => recipe?.source && window.open(recipe.source, "_blank", "noopener,noreferrer")}
               >
-                Cook it →
+                Cook it
               </button>
+              <button className="mini" style={{ marginTop: 0 }} onClick={saveRecipe}>Save</button>
               <button className="mini" style={{ marginTop: 0 }} onClick={loadRecipe}>Another</button>
             </div>
           </section>
@@ -1043,7 +1062,7 @@ export default function Home() {
 
           <section className="tile c2 tools">
             <p className="eyebrow" style={{ width: "100%" }}><span className="dot" /> jump into</p>
-            <button className="toolbtn" onClick={() => say("opening recipes")}>Recipes</button>
+            <Link href="/recipes" className="toolbtn">Recipes</Link>
             <button className="toolbtn" onClick={() => say("opening all chores")}>All chores</button>
             <button className="toolbtn" onClick={() => say("opening full calendar")}>Calendar</button>
             <button className="toolbtn" onClick={() => say("opening your 17 experiments")}>Experiments <span className="k">17</span></button>
