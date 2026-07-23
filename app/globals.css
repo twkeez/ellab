@@ -121,6 +121,11 @@ html, body { margin: 0; padding: 0; }
 .list li.done .gtext { text-decoration: line-through; color: var(--text-faint); }
 .gtext { flex: 1; }
 
+.row-x { flex-shrink: 0; border: 0; background: transparent; color: var(--text-faint); cursor: pointer; font-size: 16px; line-height: 1; padding: 0 2px; opacity: 0.4; transition: opacity .15s, color .15s; }
+.row-x:hover { opacity: 1; color: var(--text); }
+.clear-done { align-self: flex-start; margin-top: 8px; background: transparent; border: 0; padding: 2px 0; cursor: pointer;
+  font-family: var(--mono); font-size: 10.5px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-faint); transition: color .15s; }
+.clear-done:hover { color: var(--accent); }
 .addrow { display: flex; gap: 8px; margin-top: 10px; }
 .addrow input { flex: 1; border-radius: 10px; border: 1px solid var(--border); background: var(--field); color: var(--text); padding: 8px 11px; font-family: var(--font); font-size: 12.5px; }
 .addrow input::placeholder { color: var(--text-faint); }

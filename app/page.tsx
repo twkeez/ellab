@@ -366,6 +366,19 @@ export default function Home() {
     }
   };
 
+  const deleteGrocery = (g: Grocery) => {
+    setGroceries((gs) => gs.filter((x) => x.id !== g.id));
+    if (supabase) void supabase.from("groceries").delete().eq("id", g.id);
+  };
+
+  const clearCheckedGroceries = () => {
+    const ids = groceries.filter((g) => g.done).map((g) => g.id);
+    if (!ids.length) return;
+    setGroceries((gs) => gs.filter((g) => !g.done));
+    if (supabase) void supabase.from("groceries").delete().in("id", ids);
+    say(`cleared ${ids.length} item${ids.length > 1 ? "s" : ""}`);
+  };
+
   const addGrocery = async () => {
     const v = grocInput.trim();
     if (!v) return;
@@ -389,6 +402,19 @@ export default function Home() {
     if (supabase) {
       void supabase.from("todos").update({ done: next }).eq("id", t.id);
     }
+  };
+
+  const deleteTodo = (t: Todo) => {
+    setTodos((ts) => ts.filter((x) => x.id !== t.id));
+    if (supabase) void supabase.from("todos").delete().eq("id", t.id);
+  };
+
+  const clearDoneTodos = () => {
+    const ids = todos.filter((t) => t.done).map((t) => t.id);
+    if (!ids.length) return;
+    setTodos((ts) => ts.filter((t) => !t.done));
+    if (supabase) void supabase.from("todos").delete().in("id", ids);
+    say(`cleared ${ids.length} to-do${ids.length > 1 ? "s" : ""}`);
   };
 
   const addTodo = async () => {
@@ -733,9 +759,21 @@ export default function Home() {
                     {g.done ? "✓" : ""}
                   </button>
                   <span className="gtext">{g.text}</span>
+                  <button
+                    className="row-x"
+                    aria-label={"Remove " + g.text}
+                    onClick={() => deleteGrocery(g)}
+                  >
+                    ×
+                  </button>
                 </li>
               ))}
             </ul>
+            {groceries.some((g) => g.done) && (
+              <button className="clear-done" onClick={clearCheckedGroceries}>
+                Clear {groceries.filter((g) => g.done).length} checked
+              </button>
+            )}
             <div className="addrow">
               <input
                 placeholder="add an item…"
@@ -821,10 +859,22 @@ export default function Home() {
                     {t.done ? "✓" : ""}
                   </button>
                   <span className="gtext">{t.text}</span>
+                  <button
+                    className="row-x"
+                    aria-label={"Remove " + t.text}
+                    onClick={() => deleteTodo(t)}
+                  >
+                    ×
+                  </button>
                 </li>
               ))}
             </ul>
             <span className="fill" />
+            {todos.some((t) => t.done) && (
+              <button className="clear-done" onClick={clearDoneTodos}>
+                Clear {todos.filter((t) => t.done).length} done
+              </button>
+            )}
             <div className="addrow">
               <input
                 placeholder="add a to-do…"
