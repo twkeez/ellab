@@ -6,7 +6,7 @@ import { WxIcon, SunriseIcon, SunsetIcon, DropletIcon, aqiColor } from "@/compon
 
 type Mode = "auto" | "morning" | "day" | "evening" | "night";
 type Accent = "honey" | "green" | "teal" | "blue" | "purple" | "pink";
-type MediaType = "book" | "film" | "music";
+type MediaType = "book" | "film" | "music" | "game";
 
 type Grocery = { id: number; text: string; done: boolean };
 type MediaItem = { id: number; type: MediaType; title: string; author?: string };
@@ -79,14 +79,19 @@ const PREFIX_MAP: Record<string, string> = {
   book: "book", books: "book", read: "book", reading: "book",
   movie: "film", movies: "film", film: "film", films: "film", watch: "film",
   music: "music", album: "music", albums: "music", song: "music", listen: "music",
+  game: "game", games: "game", videogame: "game", videogames: "game", play: "game",
   grocery: "groceries", groceries: "groceries", buy: "groceries", shop: "groceries", food: "groceries",
   chore: "chore", chores: "chore", clean: "chore", todo: "chore",
   note: "note", idea: "note", thought: "note",
 };
 
 const DEST_LABEL: Record<string, string> = {
-  book: "books", film: "films", music: "music",
+  book: "books", film: "films", music: "music", game: "games",
   groceries: "groceries", chore: "chores", note: "notes",
+};
+
+const RADAR_LABEL: Record<string, string> = {
+  all: "All", book: "Books", film: "Films", music: "Music", game: "Games",
 };
 
 function parseEntry(line: string): { dest: string; text: string } {
@@ -394,7 +399,7 @@ export default function Home() {
       } else {
         setGroceries((g) => [...g, { id: nextId.current++, text, done: false }]);
       }
-    } else if (dest === "book" || dest === "film" || dest === "music") {
+    } else if (dest === "book" || dest === "film" || dest === "music" || dest === "game") {
       const type = dest as MediaType;
       if (supabase) {
         const { data } = await supabase
@@ -647,7 +652,7 @@ export default function Home() {
               </button>
               <span className="note" style={{ flex: 1 }}>
                 <code className="pfx">book</code> <code className="pfx">film</code> <code className="pfx">music</code>{" "}
-                <code className="pfx">groceries</code> <code className="pfx">chore</code> — or just a thought
+                <code className="pfx">game</code> <code className="pfx">groceries</code> <code className="pfx">chore</code> — or a thought
               </span>
               <button className="mini accent" style={{ marginTop: 0 }} onClick={sendDump}>
                 {sendLabel}
@@ -704,14 +709,14 @@ export default function Home() {
           <section className="tile c2 r2">
             <p className="eyebrow"><span className="dot" /> on my radar · to explore</p>
             <div className="rfilters" role="group" aria-label="Filter radar">
-              {(["all", "book", "film", "music"] as const).map((t) => (
+              {(["all", "book", "film", "music", "game"] as const).map((t) => (
                 <button
                   key={t}
                   className={"rf" + (radarFilter === t ? " on" : "")}
                   aria-pressed={radarFilter === t}
                   onClick={() => setRadarFilter(t)}
                 >
-                  {t === "all" ? "All" : t === "book" ? "Books" : t === "film" ? "Films" : "Music"}
+                  {RADAR_LABEL[t]}
                 </button>
               ))}
             </div>
@@ -725,7 +730,7 @@ export default function Home() {
             </ul>
             <div className="addrow">
               <input
-                placeholder="add a book, film or album…"
+                placeholder="add a book, film, album or game…"
                 aria-label="Add to radar"
                 value={mediaInput}
                 onChange={(e) => setMediaInput(e.target.value)}
