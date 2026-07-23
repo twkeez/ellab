@@ -293,6 +293,11 @@ export default function Home() {
 
   const shuffleSpark = () => setSparkIndex((i) => (i + 1) % SPARKS.length);
 
+  const signOut = async () => {
+    if (supabase) await supabase.auth.signOut();
+    window.location.href = "/login";
+  };
+
   const fmtTimer = (s: number) => `${pad(Math.floor(s / 60))}:${pad(s % 60)}`;
 
   const startTimer = (min: number) => {
@@ -377,9 +382,30 @@ export default function Home() {
                 ))}
               </div>
             </div>
-            <button className="primary" onClick={() => say("blank canvas → let's build")}>
-              + New experiment
-            </button>
+            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+              <button className="primary" onClick={() => say("blank canvas → let's build")}>
+                + New experiment
+              </button>
+              <button
+                onClick={signOut}
+                aria-label="Sign out"
+                title="Sign out"
+                style={{
+                  border: "1px solid var(--border-2)",
+                  borderRadius: 999,
+                  background: "var(--field)",
+                  color: "var(--text-soft)",
+                  fontFamily: "var(--mono)",
+                  fontSize: 11,
+                  letterSpacing: "0.06em",
+                  textTransform: "uppercase",
+                  padding: "10px 14px",
+                  cursor: "pointer",
+                }}
+              >
+                Sign out
+              </button>
+            </div>
           </div>
         </header>
 
