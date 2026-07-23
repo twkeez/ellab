@@ -409,25 +409,25 @@ export default function Home() {
   const timeStr = now ? `${((now.getHours() % 12) || 12)}:${pad(now.getMinutes())}` : "—:—";
   const dateStr = now ? `${DAYS[now.getDay()]}, ${now.getDate()} ${MONTHS[now.getMonth()]}` : "";
 
-  const toggleGrocery = (g: Grocery) => {
+  const toggleGrocery = async (g: Grocery) => {
     const next = !g.done;
     setGroceries((gs) => gs.map((x) => (x.id === g.id ? { ...x, done: next } : x)));
     if (supabase) {
-      void supabase.from("groceries").update({ done: next }).eq("id", g.id);
+      await supabase.from("groceries").update({ done: next }).eq("id", g.id);
     }
   };
 
-  const deleteGrocery = (g: Grocery) => {
+  const deleteGrocery = async (g: Grocery) => {
     setGroceries((gs) => gs.filter((x) => x.id !== g.id));
-    if (supabase) void supabase.from("groceries").delete().eq("id", g.id);
+    if (supabase) await supabase.from("groceries").delete().eq("id", g.id);
   };
 
-  const clearCheckedGroceries = () => {
+  const clearCheckedGroceries = async () => {
     const ids = groceries.filter((g) => g.done).map((g) => g.id);
     if (!ids.length) return;
     setGroceries((gs) => gs.filter((g) => !g.done));
-    if (supabase) void supabase.from("groceries").delete().in("id", ids);
     say(`cleared ${ids.length} item${ids.length > 1 ? "s" : ""}`);
+    if (supabase) await supabase.from("groceries").delete().in("id", ids);
   };
 
   const addGrocery = async () => {
@@ -447,25 +447,25 @@ export default function Home() {
     say("added to groceries");
   };
 
-  const toggleTodo = (t: Todo) => {
+  const toggleTodo = async (t: Todo) => {
     const next = !t.done;
     setTodos((ts) => ts.map((x) => (x.id === t.id ? { ...x, done: next } : x)));
     if (supabase) {
-      void supabase.from("todos").update({ done: next }).eq("id", t.id);
+      await supabase.from("todos").update({ done: next }).eq("id", t.id);
     }
   };
 
-  const deleteTodo = (t: Todo) => {
+  const deleteTodo = async (t: Todo) => {
     setTodos((ts) => ts.filter((x) => x.id !== t.id));
-    if (supabase) void supabase.from("todos").delete().eq("id", t.id);
+    if (supabase) await supabase.from("todos").delete().eq("id", t.id);
   };
 
-  const clearDoneTodos = () => {
+  const clearDoneTodos = async () => {
     const ids = todos.filter((t) => t.done).map((t) => t.id);
     if (!ids.length) return;
     setTodos((ts) => ts.filter((t) => !t.done));
-    if (supabase) void supabase.from("todos").delete().in("id", ids);
     say(`cleared ${ids.length} to-do${ids.length > 1 ? "s" : ""}`);
+    if (supabase) await supabase.from("todos").delete().in("id", ids);
   };
 
   const addTodo = async () => {
@@ -597,10 +597,12 @@ export default function Home() {
     window.location.href = "/login";
   };
 
-  const dismissNews = (n: NewsItem) => {
+  const dismissNews = async (n: NewsItem) => {
     setDismissals((d) => [...d, { title: n.title, link: n.link, source: n.source }]);
     if (supabase) {
-      void supabase.from("news_dismissals").insert({ title: n.title, link: n.link, source: n.source });
+      await supabase
+        .from("news_dismissals")
+        .insert({ title: n.title, link: n.link, source: n.source });
     }
   };
 
