@@ -73,6 +73,31 @@ function rankNews(news: NewsItem[], dismissals: Dismissal[]): NewsItem[] {
 
 const DRAFT_KEY = "the-lab:draft";
 
+// Quick-capture routing: "book - dungeon crawler carl" lands on the radar,
+// "groceries - apples" on the shopping list. No prefix = a pinned thought.
+const PREFIX_MAP: Record<string, string> = {
+  book: "book", books: "book", read: "book", reading: "book",
+  movie: "film", movies: "film", film: "film", films: "film", watch: "film",
+  music: "music", album: "music", albums: "music", song: "music", listen: "music",
+  grocery: "groceries", groceries: "groceries", buy: "groceries", shop: "groceries", food: "groceries",
+  chore: "chore", chores: "chore", clean: "chore", todo: "chore",
+  note: "note", idea: "note", thought: "note",
+};
+
+const DEST_LABEL: Record<string, string> = {
+  book: "books", film: "films", music: "music",
+  groceries: "groceries", chore: "chores", note: "notes",
+};
+
+function parseEntry(line: string): { dest: string; text: string } {
+  const m = line.match(/^([a-zA-Z]+)\s*[-:–—]\s*(.+)$/);
+  if (m) {
+    const dest = PREFIX_MAP[m[1].toLowerCase()];
+    if (dest) return { dest, text: m[2].trim() };
+  }
+  return { dest: "note", text: line };
+}
+
 // Most-neglected first: never-done (null) chores, then oldest last_done.
 function sortChores(a: Chore, b: Chore): number {
   if (a.last_done === b.last_done) return a.id - b.id;
@@ -360,22 +385,62 @@ export default function Home() {
     say("added to your radar");
   };
 
-  const pinNote = async () => {
-    const v = draft.trim();
-    if (!v) return;
+  const routeEntry = async (dest: string, text: string) => {
+    if (dest === "groceries") {
+      if (supabase) {
+        const { data } = await supabase
+          .from("groceries").insert({ text, done: false }).select("id,text,done").single();
+        if (data) setGroceries((g) => [...g, data as Grocery]);
+      } else {
+        setGroceries((g) => [...g, { id: nextId.current++, text, done: false }]);
+      }
+    } else if (dest === "book" || dest === "film" || dest === "music") {
+      const type = dest as MediaType;
+      if (supabase) {
+        const { data } = await supabase
+          .from("radar_items").insert({ type, title: text }).select("id,type,title,author").single();
+        if (data) setRadar((r) => [...r, data as MediaItem]);
+      } else {
+        setRadar((r) => [...r, { id: nextId.current++, type, title: text }]);
+      }
+    } else if (dest === "chore") {
+      if (supabase) {
+        const { data } = await supabase
+          .from("chores").insert({ name: text }).select("id,name,last_done").single();
+        if (data) setChores((c) => [...c, data as Chore].sort(sortChores));
+      } else {
+        setChores((c) => [...c, { id: nextId.current++, name: text, last_done: null }].sort(sortChores));
+      }
+    } else {
+      if (supabase) {
+        const { data } = await supabase.from("notes").insert({ text }).select("id,text").single();
+        if (data) setPins((p) => [...p, data as Note]);
+      } else {
+        setPins((p) => [...p, { id: nextId.current++, text }]);
+      }
+    }
+  };
+
+  const sendDump = async () => {
+    const lines = draft.split("\n").map((l) => l.trim()).filter(Boolean);
+    if (!lines.length) return;
     setDraft("");
     if (typeof window !== "undefined") window.localStorage.removeItem(DRAFT_KEY);
-    if (supabase) {
-      const { data } = await supabase
-        .from("notes")
-        .insert({ text: v })
-        .select("id,text")
-        .single();
-      if (data) setPins((p) => [...p, data as Note]);
-    } else {
-      setPins((p) => [...p, { id: nextId.current++, text: v }]);
+
+    let last = "note";
+    for (const line of lines) {
+      const { dest, text } = parseEntry(line);
+      if (!text) continue;
+      await routeEntry(dest, text);
+      last = dest;
     }
-    say("pinned to the wall");
+    say(
+      lines.length > 1
+        ? `captured ${lines.length} things`
+        : last === "note"
+        ? "pinned to the wall"
+        : `added to ${DEST_LABEL[last]}`
+    );
   };
 
   const focusChore = chores[0];
@@ -441,6 +506,15 @@ export default function Home() {
 
   const visibleRadar = radar.filter((m) => radarFilter === "all" || m.type === radarFilter);
   const rankedNews = useMemo(() => rankNews(news, dismissals), [news, dismissals]);
+
+  const draftLines = draft.split("\n").map((l) => l.trim()).filter(Boolean);
+  const draftDest = draftLines.length === 1 ? parseEntry(draftLines[0]).dest : null;
+  const sendLabel =
+    draftLines.length > 1
+      ? `Capture ${draftLines.length}`
+      : draftDest && draftDest !== "note"
+      ? `Add to ${DEST_LABEL[draftDest]}`
+      : "Pin it";
 
   return (
     <div className="hub" data-tod={tod} data-accent={accent}>
@@ -557,20 +631,26 @@ export default function Home() {
             <p className="eyebrow"><span className="dot" /> brain dump</p>
             <textarea
               className="dump"
-              placeholder="what's rattling around today?"
+              placeholder={"what's rattling around today?\ntry: book - dungeon crawler carl"}
               value={draft}
               onChange={(e) => {
                 setDraft(e.target.value);
                 if (typeof window !== "undefined") window.localStorage.setItem(DRAFT_KEY, e.target.value);
+              }}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) { e.preventDefault(); sendDump(); }
               }}
             />
             <div className="dumprow">
               <button className="iconbtn" aria-label="Voice capture" onClick={() => say("listening… (voice capture)")}>
                 🎙
               </button>
-              <span className="note" style={{ flex: 1 }}>tap the mic to talk — easiest from the kitchen</span>
-              <button className="mini accent" style={{ marginTop: 0 }} onClick={pinNote}>
-                Pin it
+              <span className="note" style={{ flex: 1 }}>
+                <code className="pfx">book</code> <code className="pfx">film</code> <code className="pfx">music</code>{" "}
+                <code className="pfx">groceries</code> <code className="pfx">chore</code> — or just a thought
+              </span>
+              <button className="mini accent" style={{ marginTop: 0 }} onClick={sendDump}>
+                {sendLabel}
               </button>
             </div>
             <div className="pins">
