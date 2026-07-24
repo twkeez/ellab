@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { supabase } from "@/lib/supabase";
+import { TOOLS } from "@/lib/tools";
 import { WxIcon, SunriseIcon, SunsetIcon, DropletIcon, aqiColor } from "@/components/WxIcons";
 
 type Mode = "auto" | "morning" | "day" | "evening" | "night";
@@ -50,6 +51,7 @@ function moonPhase(d: Date) {
 type Note = { id: number; text: string };
 type Chore = { id: number; name: string; last_done: string | null };
 type NewsItem = { title: string; source: string; link: string };
+type Ev = { id: number; title: string; time: string | null };
 type Dismissal = { title: string; link: string; source: string };
 
 // Words too common to carry meaning — ignored when learning what you dislike.
@@ -205,6 +207,7 @@ export default function Home() {
   const [news, setNews] = useState<NewsItem[]>([]);
   const [dismissals, setDismissals] = useState<Dismissal[]>([]);
   const [recipe, setRecipe] = useState<Recipe | null>(null);
+  const [todayEvents, setTodayEvents] = useState<Ev[]>([]);
   const [latestDraft, setLatestDraft] = useState<{ title: string; words: number } | null>(null);
   const [otd, setOtd] = useState<OtdItem[]>([]);
   const [otdOffset, setOtdOffset] = useState(0);
@@ -316,6 +319,14 @@ export default function Home() {
         .from("news_dismissals")
         .select("title,link,source");
       if (alive && nd) setDismissals(nd as Dismissal[]);
+
+      const todayStr = ymd(new Date());
+      const { data: ev } = await supabase!
+        .from("events")
+        .select("id,title,time")
+        .eq("date", todayStr)
+        .order("time", { ascending: true, nullsFirst: true });
+      if (alive && ev) setTodayEvents(ev as Ev[]);
 
       const { data: dr } = await supabase!
         .from("drafts")
@@ -813,13 +824,19 @@ export default function Home() {
           <section className="tile r2">
             <p className="eyebrow"><span className="dot" /> today</p>
             <ul className="list">
-              <li><span className="ev-time">09:00</span><span className="gtext">Standup call</span></li>
-              <li><span className="ev-time">13:00</span><span className="gtext">Lunch w/ Sam</span></li>
-              <li><span className="ev-time">17:30</span><span className="gtext">Dog walk</span></li>
-              <li><span className="ev-time">20:00</span><span className="gtext">Pasta night</span></li>
+              {todayEvents.length === 0 ? (
+                <li><span className="gtext" style={{ color: "var(--text-soft)" }}>nothing scheduled today</span></li>
+              ) : (
+                todayEvents.map((e) => (
+                  <li key={e.id}>
+                    <span className="ev-time">{e.time ? e.time : "—"}</span>
+                    <span className="gtext">{e.title}</span>
+                  </li>
+                ))
+              )}
             </ul>
             <span className="fill" />
-            <button className="mini" onClick={() => say("opening full calendar")}>Open calendar →</button>
+            <Link href="/calendar" className="mini">Open calendar →</Link>
           </section>
 
           <section className="tile r2">
@@ -1063,8 +1080,8 @@ export default function Home() {
             <p className="eyebrow" style={{ width: "100%" }}><span className="dot" /> jump into</p>
             <Link href="/recipes" className="toolbtn">Recipes</Link>
             <Link href="/chores" className="toolbtn">All chores</Link>
-            <button className="toolbtn" onClick={() => say("opening full calendar")}>Calendar</button>
-            <button className="toolbtn" onClick={() => say("opening your 17 experiments")}>Experiments <span className="k">17</span></button>
+            <Link href="/calendar" className="toolbtn">Calendar</Link>
+            <Link href="/experiments" className="toolbtn">Experiments <span className="k">{TOOLS.length}</span></Link>
           </section>
         </main>
       </div>
