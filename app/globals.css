@@ -14,6 +14,8 @@ html, body { margin: 0; padding: 0; }
   --radius: 20px;
   --font: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Helvetica Neue", Helvetica, Arial, sans-serif;
   --mono: ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas, monospace;
+  --serif: var(--serif);
+  --type: "Courier New", Courier, monospace;
 }
 .hub[data-tod="morning"], .cmdk-root[data-tod="morning"] {
   --bg-a: #FCEFE0; --bg-b: #F5E6EF; --blob-1: #FFD9A8; --blob-2: #FFC6D5; --blob-3: #CFE2FF; --blob-op: 0.55;
@@ -160,15 +162,64 @@ html, body { margin: 0; padding: 0; }
 .feed .masthead { text-align: center; border-top: 1px solid var(--border-2);
   border-bottom: 3px double color-mix(in srgb, var(--text) 26%, transparent);
   padding: 3px 0 8px; margin-bottom: 2px; }
-.masthead-name { font-family: Georgia, "Times New Roman", Times, serif; font-weight: 700;
+.masthead-name { font-family: var(--serif); font-weight: 700;
   font-size: 22px; letter-spacing: 0.01em; color: var(--text); margin: 0; line-height: 1.05; }
 .masthead-line { display: flex; justify-content: space-between; gap: 10px; margin-top: 5px;
   font-family: var(--mono); font-size: 8.5px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--text-faint); }
 
-.feed .news a { font-family: Georgia, "Times New Roman", Times, serif; font-size: 14px; font-weight: 600; line-height: 1.28; }
+.feed .news a { font-family: var(--serif); font-size: 14px; font-weight: 600; line-height: 1.28; }
 .feed .news li:first-child a { font-size: 17px; font-weight: 700; line-height: 1.22; }
-.feed .news .src { font-family: Georgia, "Times New Roman", Times, serif; font-weight: 700;
+.feed .news .src { font-family: var(--serif); font-weight: 700;
   font-variant: small-caps; text-transform: none; letter-spacing: 0.04em; font-size: 11.5px; color: var(--accent-ink); margin-bottom: 2px; }
+
+/* ── material motifs ─────────────────────────────────────────── */
+/* Today → tear-off calendar page */
+.caltop { display: flex; align-items: center; gap: 12px; }
+.caltile .caltop .eyebrow { margin: 0; }
+.datepad { width: 52px; flex-shrink: 0; border-radius: 9px; overflow: hidden; border: 1px solid var(--border-2);
+  background: var(--field); text-align: center; box-shadow: 0 2px 7px -2px rgba(0,0,0,0.2); }
+.datepad-dow { display: block; background: var(--accent); color: var(--accent-ink); font-family: var(--mono);
+  font-size: 9px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; padding: 2px 0; }
+.datepad-num { display: block; font-family: var(--serif); font-size: 23px; font-weight: 700; color: var(--text); line-height: 1.1; padding-top: 2px; }
+.datepad-mon { display: block; font-family: var(--mono); font-size: 8px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--text-faint); padding-bottom: 3px; }
+
+/* Dinner → recipe index card */
+.rc-kicker { font-family: var(--serif); font-variant: small-caps; letter-spacing: 0.05em; font-size: 12.5px; font-weight: 700;
+  color: var(--accent-ink); margin: 0; padding-bottom: 7px; border-bottom: 2px solid color-mix(in srgb, var(--accent) 45%, transparent); }
+.recipecard .recipe-name { font-family: var(--serif); margin-top: 2px; }
+.rc-meta { font-family: var(--mono); font-size: 10px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-faint); margin: 5px 0 0; }
+
+/* On this day → typewriter */
+.otdtile .otd .gtext, .otdtile .otd .gtext a { font-family: var(--type); font-size: 12.5px; letter-spacing: -0.02em; }
+.otdtile .otd-year { font-family: var(--type); font-weight: 700; }
+
+/* Groceries + To-do → receipt paper */
+.receipt .eyebrow { padding-bottom: 8px; border-bottom: 1px dashed var(--border-2); }
+.receipt .gtext { font-family: var(--type); font-size: 13px; letter-spacing: -0.03em; }
+
+/* Brain dump → ruled notepad */
+.notepad .dump { padding-left: 42px; line-height: 26px;
+  background-image:
+    linear-gradient(to right, transparent 31px, color-mix(in srgb, #d98a8a 60%, transparent) 31px 32px, transparent 32px),
+    repeating-linear-gradient(to bottom, transparent 0 25px, var(--border) 25px 26px);
+  background-position: 0 13px, 0 13px; background-attachment: local, local; }
+
+/* On the bike → odometer */
+.biketile .fill { flex: 0 0 auto; }
+.odo { display: flex; align-items: center; gap: 4px; }
+.odo-cell { font-family: var(--mono); font-variant-numeric: tabular-nums; font-weight: 700; font-size: 28px; line-height: 1; color: var(--text);
+  background: var(--field); border: 1px solid var(--border-2); border-radius: 6px; padding: 5px 7px; box-shadow: inset 0 -7px 9px -7px rgba(0,0,0,0.3); }
+.odo.met .odo-cell { color: var(--accent-ink); border-color: color-mix(in srgb, var(--accent) 50%, var(--border-2)); }
+.odo-unit { font-family: var(--mono); font-size: 9px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-faint); line-height: 1.15; margin-left: 5px; }
+
+/* Timer → analog dial */
+.dial { position: relative; display: grid; place-items: center; margin: 4px auto; width: 84px; height: 84px; }
+.dial-svg { width: 84px; height: 84px; }
+.dial-tick { stroke: var(--border-2); stroke-width: 1.5; }
+.dial-tick.major { stroke: var(--text-faint); stroke-width: 2.5; }
+.dial-track { fill: none; stroke: var(--border); stroke-width: 3; }
+.dial-arc { fill: none; stroke: var(--accent); stroke-width: 4; stroke-linecap: round; transition: stroke-dashoffset 1s linear; }
+.dial .timer-num { position: absolute; font-size: 1.25rem; }
 
 .news li { align-items: flex-start; padding: 8px 0; gap: 8px; }
 .news a { flex: 1; display: block; color: var(--text); text-decoration: none; font-weight: 500; font-size: 13px; line-height: 1.35; }

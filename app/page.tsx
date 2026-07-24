@@ -255,6 +255,7 @@ export default function Home() {
   const [sparkIndex, setSparkIndex] = useState(0);
 
   const [remaining, setRemaining] = useState(0);
+  const [timerTotal, setTimerTotal] = useState(0);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const nextId = useRef(1000);
@@ -739,10 +740,12 @@ export default function Home() {
     if (timerRef.current) clearInterval(timerRef.current);
     if (min === 0) {
       setRemaining(0);
+      setTimerTotal(0);
       say("timer stopped");
       return;
     }
     setRemaining(min * 60);
+    setTimerTotal(min * 60);
     say(min + " minute timer started");
     timerRef.current = setInterval(() => {
       setRemaining((r) => {
@@ -931,7 +934,7 @@ export default function Home() {
         })()}
 
         <main className="grid">
-          <section className="tile c2 r2">
+          <section className="tile c2 r2 notepad">
             <p className="eyebrow"><span className="dot" /> brain dump</p>
             <textarea
               className="dump"
@@ -965,8 +968,15 @@ export default function Home() {
             </div>
           </section>
 
-          <section className="tile r2">
-            <p className="eyebrow"><span className="dot" /> today</p>
+          <section className="tile r2 caltile">
+            <div className="caltop">
+              <div className="datepad" aria-hidden="true">
+                <span className="datepad-dow">{now ? DAYS[now.getDay()].slice(0, 3) : "—"}</span>
+                <span className="datepad-num">{now ? now.getDate() : "–"}</span>
+                <span className="datepad-mon">{now ? MONTHS[now.getMonth()].slice(0, 3) : ""}</span>
+              </div>
+              <p className="eyebrow"><span className="dot" /> today</p>
+            </div>
             <ul className="list">
               {todayEvents.length === 0 ? (
                 <li><span className="gtext" style={{ color: "var(--text-soft)" }}>nothing scheduled today</span></li>
@@ -983,7 +993,7 @@ export default function Home() {
             <Link href="/calendar" className="mini">Open calendar →</Link>
           </section>
 
-          <section className="tile r2">
+          <section className="tile r2 receipt">
             <p className="eyebrow"><span className="dot" /> groceries</p>
             <ul className="list">
               {groceries.map((g) => (
@@ -1089,7 +1099,7 @@ export default function Home() {
             </ul>
           </section>
 
-          <section className="tile c2 r2">
+          <section className="tile c2 r2 receipt">
             <p className="eyebrow"><span className="dot" /> to-do</p>
             <ul className="list">
               {[...todos].sort((a, b) => Number(a.done) - Number(b.done)).map((t) => (
@@ -1131,7 +1141,7 @@ export default function Home() {
             </div>
           </section>
 
-          <section className="tile c2 r2">
+          <section className="tile c2 r2 otdtile">
             <p className="eyebrow"><span className="dot" /> on this day</p>
             <ul className="list otd">
               {otd.length === 0 ? (
@@ -1174,17 +1184,16 @@ export default function Home() {
             </div>
           </section>
 
-          <section className="tile">
+          <section className="tile biketile">
             <p className="eyebrow"><span className="dot" /> on the bike</p>
             <span className="fill" />
-            <div className="focus-big">
-              {ex.todayMin >= DAILY_GOAL_MIN ? (
-                <>{DAILY_GOAL_MIN}+ min today ✓</>
-              ) : (
-                <>{ex.todayMin}<span style={{ fontSize: "0.55em", color: "var(--text-faint)" }}> / {DAILY_GOAL_MIN} min</span></>
-              )}
+            <div className={"odo" + (ex.todayMin >= DAILY_GOAL_MIN ? " met" : "")} aria-label={`${ex.todayMin} minutes today`}>
+              {String(Math.min(ex.todayMin, 999)).padStart(3, "0").split("").map((d, i) => (
+                <span key={i} className="odo-cell">{d}</span>
+              ))}
+              <span className="odo-unit">min<br />today</span>
             </div>
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, marginTop: 4 }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, marginTop: 8 }}>
               <span className="streak">🔥&#8202;<b>{ex.streak}</b>&#8202;day</span>
               <span className="bike-week">{ex.weekDaysHit}/{WEEKLY_GOAL_DAYS} this wk</span>
             </div>
@@ -1241,12 +1250,12 @@ export default function Home() {
             </div>
           </section>
 
-          <section className="tile dinner">
-            <p className="eyebrow"><span className="dot" /> dinner idea</p>
+          <section className="tile dinner recipecard">
+            <p className="rc-kicker">Recipe · from the box</p>
             <div className="big recipe-name">
               {recipe ? recipe.name : "finding an idea…"}
             </div>
-            {recipe && <p className="note">{recipe.area} · {recipe.category}</p>}
+            {recipe && <p className="rc-meta">{recipe.area} · {recipe.category}</p>}
             <div className="dinner-actions">
               <button
                 className="mini accent"
@@ -1266,10 +1275,34 @@ export default function Home() {
             <button className="mini" onClick={shuffleSpark}>Shuffle</button>
           </section>
 
-          <section className="tile">
+          <section className="tile timertile">
             <p className="eyebrow"><span className="dot" /> timer</p>
             <span className="fill" />
-            <div className="timer-num">{fmtTimer(remaining)}</div>
+            <div className="dial">
+              <svg viewBox="0 0 120 120" className="dial-svg" aria-hidden="true">
+                {Array.from({ length: 12 }).map((_, i) => {
+                  const a = (i / 12) * 2 * Math.PI;
+                  const r1 = i % 3 === 0 ? 46 : 50;
+                  const sin = Math.sin(a), cos = Math.cos(a);
+                  return (
+                    <line
+                      key={i}
+                      className={"dial-tick" + (i % 3 === 0 ? " major" : "")}
+                      x1={(60 + r1 * sin).toFixed(3)} y1={(60 - r1 * cos).toFixed(3)}
+                      x2={(60 + 55 * sin).toFixed(3)} y2={(60 - 55 * cos).toFixed(3)}
+                    />
+                  );
+                })}
+                <circle className="dial-track" cx="60" cy="60" r="52" />
+                {timerTotal > 0 && (
+                  <circle
+                    className="dial-arc" cx="60" cy="60" r="52" transform="rotate(-90 60 60)"
+                    style={{ strokeDasharray: 2 * Math.PI * 52, strokeDashoffset: 2 * Math.PI * 52 * (1 - remaining / timerTotal) }}
+                  />
+                )}
+              </svg>
+              <div className="timer-num">{fmtTimer(remaining)}</div>
+            </div>
             <div className="presets">
               <button className="preset" onClick={() => startTimer(5)}>5m</button>
               <button className="preset" onClick={() => startTimer(10)}>10m</button>
