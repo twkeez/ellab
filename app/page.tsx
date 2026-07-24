@@ -4,6 +4,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { supabase } from "@/lib/supabase";
 import { TOOLS } from "@/lib/tools";
+import Ring from "@/components/Ring";
+import { countdown } from "@/lib/goals";
 import { WxIcon, SunriseIcon, SunsetIcon, DropletIcon, aqiColor } from "@/components/WxIcons";
 
 type Mode = "auto" | "morning" | "day" | "evening" | "night";
@@ -50,6 +52,8 @@ function moonPhase(d: Date) {
 }
 type Note = { id: number; text: string };
 type Habit = { id: number; name: string };
+type SpotGoal = { id: number; title: string; why: string | null; target_date: string | null };
+type SpotStep = { id: number; text: string; done: boolean };
 type Chore = { id: number; name: string; last_done: string | null };
 type NewsItem = { title: string; source: string; link: string };
 type Ev = { id: number; title: string; time: string | null };
@@ -266,6 +270,9 @@ export default function Home() {
   const [habitDates, setHabitDates] = useState<Record<number, string[]>>({});
   const [habitInput, setHabitInput] = useState("");
 
+  const [spotGoal, setSpotGoal] = useState<SpotGoal | null>(null);
+  const [spotSteps, setSpotSteps] = useState<SpotStep[]>([]);
+
   const [sparkIndex, setSparkIndex] = useState(0);
 
   const [remaining, setRemaining] = useState(0);
@@ -357,6 +364,23 @@ export default function Home() {
           (map[row.habit_id] ||= []).push(row.date);
         }
         setHabitDates(map);
+      }
+
+      const { data: gl } = await supabase!
+        .from("goals")
+        .select("id,title,why,target_date")
+        .eq("done", false)
+        .order("created_at")
+        .limit(1);
+      if (alive && gl && gl.length) {
+        const g = gl[0] as SpotGoal;
+        setSpotGoal(g);
+        const { data: gsteps } = await supabase!
+          .from("goal_steps")
+          .select("id,text,done")
+          .eq("goal_id", g.id)
+          .order("created_at");
+        if (alive && gsteps) setSpotSteps(gsteps as SpotStep[]);
       }
 
       const todayStr = ymd(new Date());
@@ -870,6 +894,36 @@ export default function Home() {
             </div>
           </div>
         </header>
+
+        {spotGoal && (() => {
+          const total = spotSteps.length;
+          const done = spotSteps.filter((s) => s.done).length;
+          const pct = total ? done / total : 0;
+          const next = spotSteps.find((s) => !s.done);
+          const cd = countdown(spotGoal.target_date);
+          return (
+            <Link href="/goals" className="spotlight" aria-label={"Open goal: " + spotGoal.title}>
+              <Ring pct={pct} size={80} />
+              <div className="spot-body">
+                <p className="eyebrow"><span className="dot" /> the big goal</p>
+                <h3 className="spot-title">{spotGoal.title}</h3>
+                {spotGoal.why && <p className="spot-why">{spotGoal.why}</p>}
+                <div className="spot-meta">
+                  {next ? (
+                    <span className="spot-next">Next · {next.text}</span>
+                  ) : total > 0 ? (
+                    <span className="spot-next">Every milestone done 🎉</span>
+                  ) : (
+                    <span className="spot-next">Break it into milestones →</span>
+                  )}
+                  {total > 0 && <span className="goal-count">{done}/{total}</span>}
+                  {cd && <span className={"goal-target " + cd.tone}>◷ {cd.text}</span>}
+                </div>
+              </div>
+              <span className="spot-open">Open →</span>
+            </Link>
+          );
+        })()}
 
         <main className="grid">
           <section className="tile c2 r2">

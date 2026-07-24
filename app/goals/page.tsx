@@ -3,6 +3,8 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { supabase } from "@/lib/supabase";
+import Ring from "@/components/Ring";
+import { countdown } from "@/lib/goals";
 
 type Goal = { id: number; title: string; why: string | null; done: boolean; target_date: string | null };
 type Step = { id: number; goal_id: number; text: string; done: boolean };
@@ -13,40 +15,6 @@ function autoTod(): string {
   if (h >= 11 && h < 17) return "day";
   if (h >= 17 && h < 21) return "evening";
   return "night";
-}
-
-function countdown(target: string | null): { text: string; tone: string } | null {
-  if (!target) return null;
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const t = new Date(target + "T00:00:00");
-  const days = Math.round((t.getTime() - today.getTime()) / 86400000);
-  if (days > 1) return { text: `${days} days to go`, tone: "" };
-  if (days === 1) return { text: "due tomorrow", tone: "hot" };
-  if (days === 0) return { text: "due today", tone: "hot" };
-  if (days === -1) return { text: "1 day over", tone: "over" };
-  return { text: `${-days} days over`, tone: "over" };
-}
-
-function Ring({ pct }: { pct: number }) {
-  const r = 30;
-  const c = 2 * Math.PI * r;
-  return (
-    <svg className="ring" viewBox="0 0 72 72" width="72" height="72" aria-hidden="true">
-      <circle className="ring-track" cx="36" cy="36" r={r} />
-      <circle
-        className="ring-fill"
-        cx="36"
-        cy="36"
-        r={r}
-        transform="rotate(-90 36 36)"
-        style={{ strokeDasharray: c, strokeDashoffset: c * (1 - pct) }}
-      />
-      <text className="ring-num" x="36" y="37" textAnchor="middle" dominantBaseline="central">
-        {Math.round(pct * 100)}%
-      </text>
-    </svg>
-  );
 }
 
 export default function GoalsPage() {

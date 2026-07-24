@@ -224,6 +224,27 @@ html, body { margin: 0; padding: 0; }
 .step-add .iconbtn { width: 34px; height: 34px; font-size: 15px; }
 .goal-achieve { margin-top: 12px; }
 
+.spotlight { display: flex; align-items: center; gap: 20px; text-decoration: none; color: var(--text);
+  border-radius: var(--radius); padding: 18px 22px; margin-bottom: 16px; overflow: hidden;
+  background: linear-gradient(120deg, color-mix(in srgb, var(--accent) 12%, var(--surface)), var(--surface));
+  border: 1px solid color-mix(in srgb, var(--accent) 32%, var(--border));
+  -webkit-backdrop-filter: blur(var(--blur)) saturate(1.4); backdrop-filter: blur(var(--blur)) saturate(1.4);
+  box-shadow: var(--shadow); transition: transform .18s ease, box-shadow .2s ease; animation: rise .5s cubic-bezier(.2,.7,.3,1) both; }
+.spotlight:hover { transform: translateY(-3px); box-shadow: 0 16px 40px -18px rgba(0,0,0,0.4); }
+.spotlight .ring { flex-shrink: 0; }
+.spot-body { flex: 1; min-width: 0; }
+.spot-title { font-size: 20px; font-weight: 700; color: var(--text); margin: 6px 0 0; line-height: 1.2; }
+.spot-why { font-size: 13px; color: var(--text-soft); margin: 4px 0 0; line-height: 1.4; }
+.spot-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-top: 10px; }
+.spot-next { font-size: 12.5px; font-weight: 600; color: var(--accent-ink); background: color-mix(in srgb, var(--accent) 18%, transparent);
+  border: 1px solid color-mix(in srgb, var(--accent) 30%, transparent); padding: 4px 11px; border-radius: 999px; }
+.spot-open { flex-shrink: 0; font-family: var(--mono); font-size: 12px; letter-spacing: 0.04em; color: var(--accent-ink);
+  border: 1px solid color-mix(in srgb, var(--accent) 40%, var(--border-2)); border-radius: 999px; padding: 9px 15px; }
+@media (max-width: 620px) {
+  .spotlight { flex-wrap: wrap; }
+  .spot-open { display: none; }
+}
+
 .searchpill { display: inline-flex; align-items: center; gap: 8px; border: 1px solid var(--border); border-radius: 999px; background: var(--surface); color: var(--text-soft); font-size: 13px; padding: 9px 14px; cursor: pointer; -webkit-backdrop-filter: blur(var(--blur)); backdrop-filter: blur(var(--blur)); transition: border-color .2s; }
 .searchpill:hover { border-color: var(--border-2); }
 .searchpill kbd { font-family: var(--mono); font-size: 10.5px; background: var(--field); border: 1px solid var(--border-2); border-radius: 5px; padding: 1px 5px; color: var(--text); }
