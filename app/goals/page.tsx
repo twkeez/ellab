@@ -4,10 +4,12 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { supabase } from "@/lib/supabase";
 import Ring from "@/components/Ring";
-import { countdown } from "@/lib/goals";
+import { countdown, goalProgress } from "@/lib/goals";
+import { ymd, habitStreak } from "@/lib/streak";
 
 type Goal = { id: number; title: string; why: string | null; done: boolean; target_date: string | null };
 type Step = { id: number; goal_id: number; text: string; done: boolean };
+type Habit = { id: number; name: string; goal_id: number | null };
 
 function autoTod(): string {
   const h = new Date().getHours();
@@ -24,6 +26,11 @@ export default function GoalsPage() {
   const [title, setTitle] = useState("");
   const [why, setWhy] = useState("");
   const [stepInputs, setStepInputs] = useState<Record<number, string>>({});
+  const [habits, setHabits] = useState<Habit[]>([]);
+  const [habitDates, setHabitDates] = useState<Record<number, string[]>>({});
+  const [habitInputs, setHabitInputs] = useState<Record<number, string>>({});
+
+  const todayStr = ymd(new Date());
 
   useEffect(() => { setTod(autoTod()); }, []);
 
@@ -42,6 +49,23 @@ export default function GoalsPage() {
         .select("id,goal_id,text,done")
         .order("created_at");
       if (alive && s) setSteps(s as Step[]);
+
+      const { data: hb } = await supabase!
+        .from("habits")
+        .select("id,name,goal_id")
+        .order("created_at");
+      if (alive && hb) setHabits(hb as Habit[]);
+
+      const { data: hl } = await supabase!
+        .from("habit_logs")
+        .select("habit_id,date");
+      if (alive && hl) {
+        const map: Record<number, string[]> = {};
+        for (const row of hl as { habit_id: number; date: string }[]) {
+          (map[row.habit_id] ||= []).push(row.date);
+        }
+        setHabitDates(map);
+      }
     })();
     return () => { alive = false; };
   }, []);
@@ -103,7 +127,49 @@ export default function GoalsPage() {
     if (supabase) await supabase.from("goal_steps").delete().eq("id", s.id);
   };
 
+  const toggleHabitToday = async (h: Habit) => {
+    const done = (habitDates[h.id] ?? []).includes(todayStr);
+    setHabitDates((m) => ({
+      ...m,
+      [h.id]: done
+        ? (m[h.id] ?? []).filter((d) => d !== todayStr)
+        : [...(m[h.id] ?? []), todayStr],
+    }));
+    if (supabase) {
+      if (done) {
+        await supabase.from("habit_logs").delete().eq("habit_id", h.id).eq("date", todayStr);
+      } else {
+        await supabase.from("habit_logs").insert({ habit_id: h.id, date: todayStr });
+      }
+    }
+  };
+
+  const addLinkedHabit = async (g: Goal) => {
+    const v = (habitInputs[g.id] ?? "").trim();
+    if (!v) return;
+    setHabitInputs((m) => ({ ...m, [g.id]: "" }));
+    if (supabase) {
+      const { data } = await supabase
+        .from("habits")
+        .insert({ name: v, goal_id: g.id })
+        .select("id,name,goal_id")
+        .single();
+      if (data) setHabits((h) => [...h, data as Habit]);
+    }
+  };
+
+  const linkHabit = async (g: Goal, habitId: number) => {
+    setHabits((hs) => hs.map((x) => (x.id === habitId ? { ...x, goal_id: g.id } : x)));
+    if (supabase) await supabase.from("habits").update({ goal_id: g.id }).eq("id", habitId);
+  };
+
+  const unlinkHabit = async (h: Habit) => {
+    setHabits((hs) => hs.map((x) => (x.id === h.id ? { ...x, goal_id: null } : x)));
+    if (supabase) await supabase.from("habits").update({ goal_id: null }).eq("id", h.id);
+  };
+
   const active = goals.filter((g) => !g.done);
+  const unlinkedHabits = habits.filter((h) => h.goal_id == null);
   const achieved = goals.filter((g) => g.done);
 
   return (
@@ -134,7 +200,9 @@ export default function GoalsPage() {
                 const gs = steps.filter((s) => s.goal_id === g.id);
                 const total = gs.length;
                 const done = gs.filter((s) => s.done).length;
-                const pct = total ? done / total : g.done ? 1 : 0;
+                const linked = habits.filter((h) => h.goal_id === g.id);
+                const aliveCount = linked.filter((h) => habitStreak(habitDates[h.id] ?? [], todayStr) > 0).length;
+                const pct = goalProgress(done, total, aliveCount, linked.length);
                 const cd = countdown(g.target_date);
                 const complete = total > 0 && done === total;
                 return (
@@ -189,6 +257,53 @@ export default function GoalsPage() {
                           onKeyDown={(e) => { if (e.key === "Enter") addStep(g); }}
                         />
                         <button className="iconbtn" aria-label="Add milestone" onClick={() => addStep(g)}>+</button>
+                      </div>
+
+                      <div className="goal-routine">
+                        <p className="routine-label">Daily routine that keeps this going</p>
+                        {linked.map((h) => {
+                          const dates = habitDates[h.id] ?? [];
+                          const hdone = dates.includes(todayStr);
+                          const s = habitStreak(dates, todayStr);
+                          return (
+                            <div key={h.id} className={"ghabit" + (hdone ? " done" : "")}>
+                              <button
+                                className={"check" + (hdone ? " done" : "")}
+                                aria-label={"Tick " + h.name + " today"}
+                                aria-pressed={hdone}
+                                onClick={() => toggleHabitToday(h)}
+                              >
+                                {hdone ? "✓" : ""}
+                              </button>
+                              <span className="gtext">{h.name}</span>
+                              <span className={"habit-streak" + (s > 0 ? "" : " cold")}>🔥{s}</span>
+                              <button className="row-x" aria-label={"Unlink " + h.name} title="Unlink from this goal" onClick={() => unlinkHabit(h)}>×</button>
+                            </div>
+                          );
+                        })}
+                        <div className="step-add">
+                          <input
+                            placeholder="add a daily habit that gets you here…"
+                            aria-label="Add a daily habit for this goal"
+                            value={habitInputs[g.id] ?? ""}
+                            onChange={(e) => setHabitInputs((m) => ({ ...m, [g.id]: e.target.value }))}
+                            onKeyDown={(e) => { if (e.key === "Enter") addLinkedHabit(g); }}
+                          />
+                          <button className="iconbtn" aria-label="Add daily habit" onClick={() => addLinkedHabit(g)}>+</button>
+                        </div>
+                        {unlinkedHabits.length > 0 && (
+                          <select
+                            className="habit-link-select"
+                            aria-label="Link an existing habit"
+                            value=""
+                            onChange={(e) => { if (e.target.value) linkHabit(g, Number(e.target.value)); }}
+                          >
+                            <option value="">or link an existing habit…</option>
+                            {unlinkedHabits.map((h) => (
+                              <option key={h.id} value={h.id}>{h.name}</option>
+                            ))}
+                          </select>
+                        )}
                       </div>
 
                       {complete && (

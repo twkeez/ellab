@@ -1,3 +1,18 @@
+// A goal's progress ring blends its one-time milestones with the daily
+// habits linked to it: each done milestone and each still-alive habit fills
+// one unit of the total. A lapsed linked habit stays in the denominator, so
+// letting the routine slip drags the ring down and nudges you back.
+export function goalProgress(
+  milestonesDone: number,
+  milestonesTotal: number,
+  habitsAlive: number,
+  habitsTotal: number
+): number {
+  const total = milestonesTotal + habitsTotal;
+  if (!total) return 0;
+  return (milestonesDone + habitsAlive) / total;
+}
+
 // Days-to-target for a goal. Returns null when no date is set; a tone of
 // "hot" as the deadline lands and "over" once it's passed.
 export function countdown(target: string | null): { text: string; tone: string } | null {

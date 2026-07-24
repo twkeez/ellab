@@ -5,7 +5,8 @@ import Link from "next/link";
 import { supabase } from "@/lib/supabase";
 import { TOOLS } from "@/lib/tools";
 import Ring from "@/components/Ring";
-import { countdown } from "@/lib/goals";
+import { countdown, goalProgress } from "@/lib/goals";
+import { pad, ymd, habitStreak } from "@/lib/streak";
 import { WxIcon, SunriseIcon, SunsetIcon, DropletIcon, aqiColor } from "@/components/WxIcons";
 
 type Mode = "auto" | "morning" | "day" | "evening" | "night";
@@ -51,7 +52,7 @@ function moonPhase(d: Date) {
   return MOONS[Math.round(frac * 8) % 8];
 }
 type Note = { id: number; text: string };
-type Habit = { id: number; name: string };
+type Habit = { id: number; name: string; goal_id: number | null };
 type SpotGoal = { id: number; title: string; why: string | null; target_date: string | null };
 type SpotStep = { id: number; text: string; done: boolean };
 type Chore = { id: number; name: string; last_done: string | null };
@@ -193,31 +194,6 @@ function greetFor(m: Exclude<Mode, "auto">): string {
   return { morning: "Good morning, Tom", day: "Hello, Tom", evening: "Good evening, Tom", night: "Late night, Tom" }[m];
 }
 
-function pad(n: number): string {
-  return n < 10 ? "0" + n : String(n);
-}
-
-function ymd(d: Date): string {
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
-}
-
-function dayBefore(dateStr: string): string {
-  const d = new Date(dateStr + "T00:00:00");
-  d.setDate(d.getDate() - 1);
-  return ymd(d);
-}
-
-// Consecutive days completed, counting back from today (or yesterday, so a
-// not-yet-ticked-today habit still shows the streak it's about to keep).
-function habitStreak(dates: string[], today: string): number {
-  const set = new Set(dates);
-  let cursor = set.has(today) ? today : dayBefore(today);
-  if (!set.has(cursor)) return 0;
-  let n = 0;
-  while (set.has(cursor)) { n++; cursor = dayBefore(cursor); }
-  return n;
-}
-
 export default function Home() {
   const [now, setNow] = useState<Date | null>(null);
   const [mode, setMode] = useState<Mode>("auto");
@@ -351,7 +327,7 @@ export default function Home() {
 
       const { data: hb } = await supabase!
         .from("habits")
-        .select("id,name")
+        .select("id,name,goal_id")
         .order("created_at");
       if (alive && hb) setHabits(hb as Habit[]);
 
@@ -706,10 +682,10 @@ export default function Home() {
     setHabitInput("");
     if (supabase) {
       const { data } = await supabase
-        .from("habits").insert({ name: v }).select("id,name").single();
+        .from("habits").insert({ name: v }).select("id,name,goal_id").single();
       if (data) setHabits((h) => [...h, data as Habit]);
     } else {
-      setHabits((h) => [...h, { id: nextId.current++, name: v }]);
+      setHabits((h) => [...h, { id: nextId.current++, name: v, goal_id: null }]);
     }
     say("habit added");
   };
@@ -898,7 +874,9 @@ export default function Home() {
         {spotGoal && (() => {
           const total = spotSteps.length;
           const done = spotSteps.filter((s) => s.done).length;
-          const pct = total ? done / total : 0;
+          const linked = habits.filter((h) => h.goal_id === spotGoal.id);
+          const alive = linked.filter((h) => habitStreak(habitDates[h.id] ?? [], todayStr) > 0).length;
+          const pct = goalProgress(done, total, alive, linked.length);
           const next = spotSteps.find((s) => !s.done);
           const cd = countdown(spotGoal.target_date);
           return (
@@ -916,7 +894,12 @@ export default function Home() {
                   ) : (
                     <span className="spot-next">Break it into milestones →</span>
                   )}
-                  {total > 0 && <span className="goal-count">{done}/{total}</span>}
+                  {total > 0 && <span className="goal-count">{done}/{total} milestones</span>}
+                  {linked.length > 0 && (
+                    <span className={"goal-count" + (alive < linked.length ? " dim" : "")}>
+                      🔥 {alive}/{linked.length} routine{alive < linked.length ? " — slipping" : ""}
+                    </span>
+                  )}
                   {cd && <span className={"goal-target " + cd.tone}>◷ {cd.text}</span>}
                 </div>
               </div>
