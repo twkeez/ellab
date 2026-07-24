@@ -1058,8 +1058,14 @@ export default function Home() {
             </div>
           </section>
 
-          <section className="tile c2 r2">
-            <p className="eyebrow"><span className="dot" /> the feed · books, film &amp; pittsburgh</p>
+          <section className="tile c2 r2 feed">
+            <div className="masthead">
+              <p className="masthead-name">The Feed</p>
+              <div className="masthead-line">
+                <span>{dateStr || "Latest edition"}</span>
+                <span>Pittsburgh · Books · Film</span>
+              </div>
+            </div>
             <ul className="list news">
               {rankedNews.length === 0 ? (
                 <li><span className="gtext" style={{ color: "var(--text-soft)" }}>catching the latest…</span></li>
