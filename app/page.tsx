@@ -1247,6 +1247,7 @@ export default function Home() {
 
           <section className="tile c2 tools">
             <p className="eyebrow" style={{ width: "100%" }}><span className="dot" /> jump into</p>
+            <Link href="/recap" className="toolbtn">This week</Link>
             <Link href="/goals" className="toolbtn">Goals</Link>
             <Link href="/recipes" className="toolbtn">Recipes</Link>
             <Link href="/chores" className="toolbtn">All chores</Link>

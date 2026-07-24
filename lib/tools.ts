@@ -11,6 +11,7 @@ export const TOOLS: Tool[] = [
   { name: "Chores", desc: "A rotating focus and a forgiving streak", href: "/chores" },
   { name: "Habits", desc: "Daily habits, each building its own streak", href: "/" },
   { name: "Goals", desc: "The bigger things you're chasing", href: "/goals" },
+  { name: "This week", desc: "Your momentum — habits, milestones & wins", href: "/recap" },
   { name: "Recipes", desc: "Dishes worth cooking, saved", href: "/recipes" },
   { name: "Writing studio", desc: "Draft fiction with Claude at your side", href: "/write" },
   { name: "Calendar", desc: "Your own events and schedule", href: "/calendar" },

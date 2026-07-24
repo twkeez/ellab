@@ -234,6 +234,27 @@ html, body { margin: 0; padding: 0; }
 .habit-link-select:focus { outline: none; border-color: var(--accent); }
 .goal-count.dim { color: #C7864B; }
 
+.recap-headline { flex-direction: row; align-items: center; gap: 20px; }
+.recap-big { font-size: 56px; font-weight: 800; line-height: 1; color: var(--accent-ink);
+  min-width: 84px; text-align: center; letter-spacing: -0.02em; }
+.recap-big-label { font-family: var(--mono); text-transform: uppercase; font-size: 11px; letter-spacing: 0.12em; color: var(--text-faint); margin: 0; }
+.recap-breakdown { font-family: var(--mono); font-size: 11.5px; color: var(--text-faint); margin: 8px 0 0; letter-spacing: 0.02em; }
+.recap-habits { display: flex; flex-direction: column; gap: 4px; margin-top: 8px; }
+.recap-habit { display: flex; align-items: center; gap: 14px; padding: 8px 0; border-top: 1px solid var(--border); }
+.recap-habit:first-child { border-top: 0; }
+.recap-habit-name { flex: 1; min-width: 0; font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.week-dots { display: flex; gap: 5px; flex-shrink: 0; }
+.wd { width: 22px; height: 22px; border-radius: 7px; display: grid; place-items: center;
+  font-family: var(--mono); font-size: 10px; color: var(--text-faint);
+  background: var(--field); border: 1px solid var(--border); }
+.wd.on { background: var(--accent); border-color: transparent; color: var(--accent-ink); font-weight: 700; }
+.wd.today { box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 45%, transparent); }
+.wd.future { opacity: 0.4; }
+.recap-goals { display: flex; flex-direction: column; gap: 4px; margin-top: 8px; }
+.recap-goal { display: flex; align-items: center; gap: 14px; padding: 10px 0; border-top: 1px solid var(--border); text-decoration: none; color: var(--text); }
+.recap-goal:first-child { border-top: 0; }
+.recap-goal-title { font-size: 15px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: block; }
+
 .spotlight { display: flex; align-items: center; gap: 20px; text-decoration: none; color: var(--text);
   border-radius: var(--radius); padding: 18px 22px; margin-bottom: 16px; overflow: hidden;
   background: linear-gradient(120deg, color-mix(in srgb, var(--accent) 12%, var(--surface)), var(--surface));

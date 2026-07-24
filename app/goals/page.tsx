@@ -119,7 +119,12 @@ export default function GoalsPage() {
   const toggleStep = async (s: Step) => {
     const next = !s.done;
     setSteps((ss) => ss.map((x) => (x.id === s.id ? { ...x, done: next } : x)));
-    if (supabase) await supabase.from("goal_steps").update({ done: next }).eq("id", s.id);
+    if (supabase) {
+      await supabase
+        .from("goal_steps")
+        .update({ done: next, done_at: next ? new Date().toISOString() : null })
+        .eq("id", s.id);
+    }
   };
 
   const removeStep = async (s: Step) => {
