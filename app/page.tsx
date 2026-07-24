@@ -760,6 +760,13 @@ export default function Home() {
               </div>
             </div>
             <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+              <button
+                className="searchpill"
+                onClick={() => window.dispatchEvent(new Event("the-lab:search"))}
+                aria-label="Search the lab"
+              >
+                Search <kbd>⌘K</kbd>
+              </button>
               <button className="primary" onClick={() => say("blank canvas → let's build")}>
                 + New experiment
               </button>
