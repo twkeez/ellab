@@ -1062,7 +1062,7 @@ export default function Home() {
           <section className="tile c2 tools">
             <p className="eyebrow" style={{ width: "100%" }}><span className="dot" /> jump into</p>
             <Link href="/recipes" className="toolbtn">Recipes</Link>
-            <button className="toolbtn" onClick={() => say("opening all chores")}>All chores</button>
+            <Link href="/chores" className="toolbtn">All chores</Link>
             <button className="toolbtn" onClick={() => say("opening full calendar")}>Calendar</button>
             <button className="toolbtn" onClick={() => say("opening your 17 experiments")}>Experiments <span className="k">17</span></button>
           </section>
