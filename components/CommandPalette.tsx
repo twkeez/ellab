@@ -54,7 +54,7 @@ export default function CommandPalette() {
     if (!open || index !== null || !supabase) return;
     (async () => {
       const hits: Hit[] = [];
-      const [notes, groc, todos, radar, rec, chores, events, drafts, exps] = await Promise.all([
+      const [notes, groc, todos, radar, rec, chores, events, drafts, exps, habits, goals] = await Promise.all([
         supabase!.from("notes").select("text"),
         supabase!.from("groceries").select("text,done"),
         supabase!.from("todos").select("text,done"),
@@ -64,6 +64,8 @@ export default function CommandPalette() {
         supabase!.from("events").select("title,date,time"),
         supabase!.from("drafts").select("title,body"),
         supabase!.from("experiments").select("title,note"),
+        supabase!.from("habits").select("name"),
+        supabase!.from("goals").select("title,why,done"),
       ]);
       for (const r of notes.data ?? []) hits.push({ type: "note", label: r.text, href: "/" });
       for (const r of groc.data ?? []) hits.push({ type: "grocery", label: r.text, sub: r.done ? "got it" : undefined, href: "/" });
@@ -74,6 +76,8 @@ export default function CommandPalette() {
       for (const r of events.data ?? []) hits.push({ type: "event", label: r.title, sub: r.date, href: "/calendar" });
       for (const r of drafts.data ?? []) hits.push({ type: "draft", label: r.title, href: "/write" });
       for (const r of exps.data ?? []) hits.push({ type: "idea", label: r.title, sub: r.note ?? undefined, href: "/experiments" });
+      for (const r of habits.data ?? []) hits.push({ type: "habit", label: r.name, href: "/" });
+      for (const r of goals.data ?? []) hits.push({ type: "goal", label: r.title, sub: r.done ? "achieved" : (r.why ?? undefined), href: "/goals" });
       setIndex(hits);
     })();
   }, [open, index]);

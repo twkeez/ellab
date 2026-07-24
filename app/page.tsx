@@ -49,6 +49,7 @@ function moonPhase(d: Date) {
   return MOONS[Math.round(frac * 8) % 8];
 }
 type Note = { id: number; text: string };
+type Habit = { id: number; name: string };
 type Chore = { id: number; name: string; last_done: string | null };
 type NewsItem = { title: string; source: string; link: string };
 type Ev = { id: number; title: string; time: string | null };
@@ -196,6 +197,23 @@ function ymd(d: Date): string {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 }
 
+function dayBefore(dateStr: string): string {
+  const d = new Date(dateStr + "T00:00:00");
+  d.setDate(d.getDate() - 1);
+  return ymd(d);
+}
+
+// Consecutive days completed, counting back from today (or yesterday, so a
+// not-yet-ticked-today habit still shows the streak it's about to keep).
+function habitStreak(dates: string[], today: string): number {
+  const set = new Set(dates);
+  let cursor = set.has(today) ? today : dayBefore(today);
+  if (!set.has(cursor)) return 0;
+  let n = 0;
+  while (set.has(cursor)) { n++; cursor = dayBefore(cursor); }
+  return n;
+}
+
 export default function Home() {
   const [now, setNow] = useState<Date | null>(null);
   const [mode, setMode] = useState<Mode>("auto");
@@ -243,6 +261,10 @@ export default function Home() {
   const [chores, setChores] = useState<Chore[]>([]);
   const [streak, setStreak] = useState(0);
   const [lastDoneDate, setLastDoneDate] = useState<string | null>(null);
+
+  const [habits, setHabits] = useState<Habit[]>([]);
+  const [habitDates, setHabitDates] = useState<Record<number, string[]>>({});
+  const [habitInput, setHabitInput] = useState("");
 
   const [sparkIndex, setSparkIndex] = useState(0);
 
@@ -319,6 +341,23 @@ export default function Home() {
         .from("news_dismissals")
         .select("title,link,source");
       if (alive && nd) setDismissals(nd as Dismissal[]);
+
+      const { data: hb } = await supabase!
+        .from("habits")
+        .select("id,name")
+        .order("created_at");
+      if (alive && hb) setHabits(hb as Habit[]);
+
+      const { data: hl } = await supabase!
+        .from("habit_logs")
+        .select("habit_id,date");
+      if (alive && hl) {
+        const map: Record<number, string[]> = {};
+        for (const row of hl as { habit_id: number; date: string }[]) {
+          (map[row.habit_id] ||= []).push(row.date);
+        }
+        setHabitDates(map);
+      }
 
       const todayStr = ymd(new Date());
       const { data: ev } = await supabase!
@@ -619,6 +658,44 @@ export default function Home() {
     }
   };
 
+  const toggleHabit = async (h: Habit) => {
+    const today = ymd(new Date());
+    const done = (habitDates[h.id] ?? []).includes(today);
+    setHabitDates((m) => ({
+      ...m,
+      [h.id]: done
+        ? (m[h.id] ?? []).filter((d) => d !== today)
+        : [...(m[h.id] ?? []), today],
+    }));
+    if (supabase) {
+      if (done) {
+        await supabase.from("habit_logs").delete().eq("habit_id", h.id).eq("date", today);
+      } else {
+        await supabase.from("habit_logs").insert({ habit_id: h.id, date: today });
+      }
+    }
+  };
+
+  const addHabit = async () => {
+    const v = habitInput.trim();
+    if (!v) return;
+    setHabitInput("");
+    if (supabase) {
+      const { data } = await supabase
+        .from("habits").insert({ name: v }).select("id,name").single();
+      if (data) setHabits((h) => [...h, data as Habit]);
+    } else {
+      setHabits((h) => [...h, { id: nextId.current++, name: v }]);
+    }
+    say("habit added");
+  };
+
+  const removeHabit = async (h: Habit) => {
+    setHabits((hs) => hs.filter((x) => x.id !== h.id));
+    setHabitDates((m) => { const n = { ...m }; delete n[h.id]; return n; });
+    if (supabase) await supabase.from("habits").delete().eq("id", h.id);
+  };
+
   const shuffleSpark = () => setSparkIndex((i) => (i + 1) % SPARKS.length);
 
   const signOut = async () => {
@@ -658,6 +735,7 @@ export default function Home() {
     }, 1000);
   };
 
+  const todayStr = ymd(now ?? new Date());
   const visibleRadar = radar.filter((m) => radarFilter === "all" || m.type === radarFilter);
   const rankedNews = useMemo(() => rankNews(news, dismissals), [news, dismissals]);
 
@@ -1031,6 +1109,53 @@ export default function Home() {
             </div>
           </section>
 
+          <section className="tile r2">
+            <p className="eyebrow"><span className="dot" /> habits</p>
+            <ul className="list">
+              {habits.length === 0 ? (
+                <li><span className="gtext" style={{ color: "var(--text-soft)" }}>Build a daily habit — add one below.</span></li>
+              ) : (
+                habits.map((h) => {
+                  const dates = habitDates[h.id] ?? [];
+                  const done = dates.includes(todayStr);
+                  const s = habitStreak(dates, todayStr);
+                  return (
+                    <li key={h.id} className={done ? "done" : ""}>
+                      <button
+                        className={"check" + (done ? " done" : "")}
+                        aria-label={"Toggle " + h.name}
+                        aria-pressed={done}
+                        onClick={() => toggleHabit(h)}
+                      >
+                        {done ? "✓" : ""}
+                      </button>
+                      <span className="gtext">{h.name}</span>
+                      {s > 0 && <span className="habit-streak">🔥{s}</span>}
+                      <button
+                        className="row-x"
+                        aria-label={"Remove " + h.name}
+                        onClick={() => removeHabit(h)}
+                      >
+                        ×
+                      </button>
+                    </li>
+                  );
+                })
+              )}
+            </ul>
+            <span className="fill" />
+            <div className="addrow">
+              <input
+                placeholder="add a habit…"
+                aria-label="Add a habit"
+                value={habitInput}
+                onChange={(e) => setHabitInput(e.target.value)}
+                onKeyDown={(e) => { if (e.key === "Enter") addHabit(); }}
+              />
+              <button className="iconbtn" aria-label="Add" onClick={addHabit}>+</button>
+            </div>
+          </section>
+
           <section className="tile dinner">
             <p className="eyebrow"><span className="dot" /> dinner idea</p>
             <div className="big recipe-name">
@@ -1085,6 +1210,7 @@ export default function Home() {
 
           <section className="tile c2 tools">
             <p className="eyebrow" style={{ width: "100%" }}><span className="dot" /> jump into</p>
+            <Link href="/goals" className="toolbtn">Goals</Link>
             <Link href="/recipes" className="toolbtn">Recipes</Link>
             <Link href="/chores" className="toolbtn">All chores</Link>
             <Link href="/calendar" className="toolbtn">Calendar</Link>
