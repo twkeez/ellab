@@ -12,6 +12,7 @@ export const TOOLS: Tool[] = [
   { name: "On the bike", desc: "Ride tracker — 30 min a day, 5 days a week", href: "/exercise" },
   { name: "Habits", desc: "Daily habits, each building its own streak", href: "/" },
   { name: "Goals", desc: "The bigger things you're chasing", href: "/goals" },
+  { name: "Today", desc: "Your morning brief — the day at a glance", href: "/today" },
   { name: "This week", desc: "Your momentum — habits, milestones & wins", href: "/recap" },
   { name: "Recipes", desc: "Dishes worth cooking, saved", href: "/recipes" },
   { name: "Writing studio", desc: "Draft fiction with Claude at your side", href: "/write" },

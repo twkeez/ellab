@@ -221,6 +221,40 @@ html, body { margin: 0; padding: 0; }
 .dial-arc { fill: none; stroke: var(--accent); stroke-width: 4; stroke-linecap: round; transition: stroke-dashoffset 1s linear; }
 .dial .timer-num { position: absolute; font-size: 1.25rem; }
 
+/* Morning brief — a calm, readable "Today" screen */
+.brief-wrap { position: relative; z-index: 1; max-width: 620px; margin: 0 auto; padding: clamp(28px, 6vw, 64px) clamp(20px, 4vw, 32px) 60px; }
+.brief-hero { margin-bottom: 30px; }
+.brief-dateline { font-family: var(--mono); text-transform: uppercase; font-size: 11px; letter-spacing: 0.14em; color: var(--text-faint); margin: 0 0 10px; }
+.brief-greet { font-family: var(--serif); font-size: clamp(30px, 7vw, 42px); font-weight: 700; color: var(--text); margin: 0; line-height: 1.05; letter-spacing: -0.01em; }
+.brief-weather { font-size: 14.5px; color: var(--text-soft); margin: 12px 0 0; }
+.brief-block { border-top: 1px solid var(--border); padding: 20px 0; }
+.brief-label { font-family: var(--mono); text-transform: uppercase; font-size: 10.5px; letter-spacing: 0.12em; color: var(--text-faint); margin: 0 0 12px; }
+.brief-empty { color: var(--text-soft); font-size: 14px; margin: 0; }
+.brief-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 9px; }
+.brief-list li { display: flex; gap: 14px; align-items: baseline; font-size: 15px; color: var(--text); }
+.brief-time { font-family: var(--mono); font-size: 12px; color: var(--accent); font-weight: 600; width: 58px; flex-shrink: 0; }
+.brief-intention-input { width: 100%; border: 0; border-bottom: 2px solid var(--border-2); background: transparent; color: var(--text);
+  font-family: var(--serif); font-size: 20px; padding: 4px 0 8px; }
+.brief-intention-input::placeholder { color: var(--text-faint); font-style: italic; }
+.brief-intention-input:focus { outline: none; border-bottom-color: var(--accent); }
+.brief-saved { font-family: var(--mono); font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--accent-ink); margin-top: 6px; display: inline-block; }
+.brief-focus { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+.brief-focus-name { font-family: var(--serif); font-size: 20px; color: var(--text); margin: 0; line-height: 1.2; }
+.brief-sub { font-family: var(--font); font-size: 13px; color: var(--text-faint); font-weight: 400; }
+.brief-habits { display: flex; flex-direction: column; gap: 6px; }
+.brief-habit { display: flex; align-items: center; gap: 12px; width: 100%; text-align: left; border: 0; background: transparent; cursor: pointer; padding: 4px 0; font-size: 15px; color: var(--text); }
+.brief-habit.done .brief-habit-name { color: var(--text-faint); text-decoration: line-through; }
+.brief-habit-name { flex: 1; }
+.brief-headline { display: block; text-decoration: none; color: var(--text); font-family: var(--serif); font-size: 16px; font-weight: 600; line-height: 1.3; }
+.brief-headline:hover { color: var(--accent); }
+.brief-src { display: block; font-family: var(--serif); font-variant: small-caps; font-weight: 700; letter-spacing: 0.04em; font-size: 12px; color: var(--accent-ink); margin-bottom: 2px; }
+.brief-otd { font-family: var(--type); font-size: 13px; color: var(--text-soft); margin: 14px 0 0; line-height: 1.5; }
+.brief-otd b { color: var(--accent-ink); }
+.brief-foot { padding-top: 26px; }
+.brief-enter { font-family: var(--mono); font-size: 12px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--accent-ink);
+  border: 1px solid color-mix(in srgb, var(--accent) 40%, var(--border-2)); border-radius: 999px; padding: 11px 20px; text-decoration: none; display: inline-block; }
+.brief-enter:hover { background: color-mix(in srgb, var(--accent) 12%, transparent); }
+
 .news li { align-items: flex-start; padding: 8px 0; gap: 8px; }
 .news a { flex: 1; display: block; color: var(--text); text-decoration: none; font-weight: 500; font-size: 13px; line-height: 1.35; }
 .news a:hover { color: var(--accent); }

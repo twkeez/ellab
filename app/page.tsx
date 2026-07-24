@@ -863,6 +863,9 @@ export default function Home() {
               </div>
             </div>
             <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+              <Link href="/today" className="searchpill" aria-label="Today's brief">
+                ☀ Today
+              </Link>
               <button
                 className="searchpill"
                 onClick={() => window.dispatchEvent(new Event("the-lab:search"))}
