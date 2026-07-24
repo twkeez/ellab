@@ -1007,14 +1007,13 @@ export default function Home() {
             </div>
           </section>
 
-          <section className="tile">
+          <section className="tile dinner">
             <p className="eyebrow"><span className="dot" /> dinner idea</p>
-            <div className="big recipe-name" style={{ fontSize: "1.2rem", marginTop: 2 }}>
+            <div className="big recipe-name">
               {recipe ? recipe.name : "finding an idea…"}
             </div>
             {recipe && <p className="note">{recipe.area} · {recipe.category}</p>}
-            <span className="fill" />
-            <div style={{ display: "flex", gap: 7, flexWrap: "wrap" }}>
+            <div className="dinner-actions">
               <button
                 className="mini accent"
                 style={{ marginTop: 0 }}
