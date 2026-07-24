@@ -5,6 +5,7 @@ import Link from "next/link";
 import { supabase } from "@/lib/supabase";
 import { ymd, habitStreak } from "@/lib/streak";
 import { exerciseStats, DAILY_GOAL_MIN, WEEKLY_GOAL_DAYS, type Workout } from "@/lib/exercise";
+import NotifyToggle from "@/components/NotifyToggle";
 
 type Ev = { id: number; title: string; time: string | null };
 type Chore = { id: number; name: string; last_done: string | null };
@@ -234,6 +235,8 @@ export default function TodayPage() {
             {otd && <p className="brief-otd"><b>{otd.year}</b> — {otd.text}</p>}
           </section>
         )}
+
+        <NotifyToggle />
 
         <footer className="brief-foot">
           <Link href="/" className="brief-enter">Enter the lab →</Link>
