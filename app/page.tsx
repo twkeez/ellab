@@ -7,6 +7,7 @@ import { TOOLS } from "@/lib/tools";
 import Ring from "@/components/Ring";
 import { countdown, goalProgress } from "@/lib/goals";
 import { pad, ymd, habitStreak } from "@/lib/streak";
+import { exerciseStats, DAILY_GOAL_MIN, WEEKLY_GOAL_DAYS, type Workout } from "@/lib/exercise";
 import { WxIcon, SunriseIcon, SunsetIcon, DropletIcon, aqiColor } from "@/components/WxIcons";
 
 type Mode = "auto" | "morning" | "day" | "evening" | "night";
@@ -249,6 +250,8 @@ export default function Home() {
   const [spotGoal, setSpotGoal] = useState<SpotGoal | null>(null);
   const [spotSteps, setSpotSteps] = useState<SpotStep[]>([]);
 
+  const [workouts, setWorkouts] = useState<Workout[]>([]);
+
   const [sparkIndex, setSparkIndex] = useState(0);
 
   const [remaining, setRemaining] = useState(0);
@@ -366,6 +369,12 @@ export default function Home() {
         .eq("date", todayStr)
         .order("time", { ascending: true, nullsFirst: true });
       if (alive && ev) setTodayEvents(ev as Ev[]);
+
+      const { data: wo } = await supabase!
+        .from("workouts")
+        .select("id,date,minutes")
+        .order("date");
+      if (alive && wo) setWorkouts(wo as Workout[]);
 
       const { data: dr } = await supabase!
         .from("drafts")
@@ -696,6 +705,18 @@ export default function Home() {
     if (supabase) await supabase.from("habits").delete().eq("id", h.id);
   };
 
+  const logRide = async (minutes: number) => {
+    const day = ymd(new Date());
+    if (supabase) {
+      const { data } = await supabase
+        .from("workouts").insert({ date: day, minutes }).select("id,date,minutes").single();
+      if (data) setWorkouts((w) => [...w, data as Workout]);
+    } else {
+      setWorkouts((w) => [...w, { id: nextId.current++, date: day, minutes }]);
+    }
+    say(`logged ${minutes} min ride`);
+  };
+
   const shuffleSpark = () => setSparkIndex((i) => (i + 1) % SPARKS.length);
 
   const signOut = async () => {
@@ -736,6 +757,7 @@ export default function Home() {
   };
 
   const todayStr = ymd(now ?? new Date());
+  const ex = exerciseStats(workouts, now ?? new Date());
   const visibleRadar = radar.filter((m) => radarFilter === "all" || m.type === radarFilter);
   const rankedNews = useMemo(() => rankNews(news, dismissals), [news, dismissals]);
 
@@ -1146,6 +1168,26 @@ export default function Home() {
             </div>
           </section>
 
+          <section className="tile">
+            <p className="eyebrow"><span className="dot" /> on the bike</p>
+            <span className="fill" />
+            <div className="focus-big">
+              {ex.todayMin >= DAILY_GOAL_MIN ? (
+                <>{DAILY_GOAL_MIN}+ min today ✓</>
+              ) : (
+                <>{ex.todayMin}<span style={{ fontSize: "0.55em", color: "var(--text-faint)" }}> / {DAILY_GOAL_MIN} min</span></>
+              )}
+            </div>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, marginTop: 4 }}>
+              <span className="streak">🔥&#8202;<b>{ex.streak}</b>&#8202;day</span>
+              <span className="bike-week">{ex.weekDaysHit}/{WEEKLY_GOAL_DAYS} this wk</span>
+            </div>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 8 }}>
+              <button className="mini accent" style={{ marginTop: 0 }} onClick={() => logRide(DAILY_GOAL_MIN)}>Log {DAILY_GOAL_MIN}m</button>
+              <Link href="/exercise" className="mini" style={{ marginTop: 0 }}>Details →</Link>
+            </div>
+          </section>
+
           <section className="tile r2">
             <p className="eyebrow"><span className="dot" /> habits</p>
             <ul className="list">
@@ -1248,6 +1290,7 @@ export default function Home() {
           <section className="tile c2 tools">
             <p className="eyebrow" style={{ width: "100%" }}><span className="dot" /> jump into</p>
             <Link href="/recap" className="toolbtn">This week</Link>
+            <Link href="/exercise" className="toolbtn">On the bike</Link>
             <Link href="/goals" className="toolbtn">Goals</Link>
             <Link href="/recipes" className="toolbtn">Recipes</Link>
             <Link href="/chores" className="toolbtn">All chores</Link>

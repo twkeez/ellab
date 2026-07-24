@@ -9,6 +9,7 @@ export const TOOLS: Tool[] = [
   { name: "To-do", desc: "One-off tasks, checked off and cleared", href: "/" },
   { name: "On my radar", desc: "Books, films, music & games to explore", href: "/" },
   { name: "Chores", desc: "A rotating focus and a forgiving streak", href: "/chores" },
+  { name: "On the bike", desc: "Ride tracker — 30 min a day, 5 days a week", href: "/exercise" },
   { name: "Habits", desc: "Daily habits, each building its own streak", href: "/" },
   { name: "Goals", desc: "The bigger things you're chasing", href: "/goals" },
   { name: "This week", desc: "Your momentum — habits, milestones & wins", href: "/recap" },

@@ -5,7 +5,8 @@ import Link from "next/link";
 import { supabase } from "@/lib/supabase";
 import Ring from "@/components/Ring";
 import { goalProgress } from "@/lib/goals";
-import { ymd, habitStreak } from "@/lib/streak";
+import { ymd, habitStreak, weekDates } from "@/lib/streak";
+import { exerciseStats, WEEKLY_GOAL_DAYS, type Workout } from "@/lib/exercise";
 
 type Goal = { id: number; title: string; target_date: string | null };
 type Step = { id: number; goal_id: number; done: boolean; done_at: string | null };
@@ -23,15 +24,6 @@ function autoTod(): string {
   return "night";
 }
 
-// Monday→Sunday of the week containing `today`, as ymd strings.
-function weekDates(today: Date): string[] {
-  const mondayOffset = (today.getDay() + 6) % 7;
-  const monday = new Date(today.getFullYear(), today.getMonth(), today.getDate() - mondayOffset);
-  return Array.from({ length: 7 }, (_, i) =>
-    ymd(new Date(monday.getFullYear(), monday.getMonth(), monday.getDate() + i))
-  );
-}
-
 function momentumLine(wins: number): string {
   if (wins === 0) return "A fresh week. One small win gets it rolling.";
   if (wins < 5) return "It's adding up — keep the thread going.";
@@ -46,6 +38,7 @@ export default function RecapPage() {
   const [habits, setHabits] = useState<Habit[]>([]);
   const [habitDates, setHabitDates] = useState<Record<number, string[]>>({});
   const [chores, setChores] = useState<Chore[]>([]);
+  const [workouts, setWorkouts] = useState<Workout[]>([]);
 
   const today = new Date();
   const todayStr = ymd(today);
@@ -86,6 +79,9 @@ export default function RecapPage() {
 
       const { data: c } = await supabase!.from("chores").select("id,name,last_done");
       if (alive && c) setChores(c as Chore[]);
+
+      const { data: wo } = await supabase!.from("workouts").select("id,date,minutes");
+      if (alive && wo) setWorkouts(wo as Workout[]);
     })();
     return () => { alive = false; };
   }, []);
@@ -96,7 +92,8 @@ export default function RecapPage() {
   );
   const milestonesCleared = steps.filter((s) => s.done && s.done_at && s.done_at >= weekStartIso).length;
   const choresThisWeek = chores.filter((c) => c.last_done && c.last_done >= weekStartIso);
-  const wins = habitTicks + milestonesCleared + choresThisWeek.length;
+  const ex = exerciseStats(workouts, today);
+  const wins = habitTicks + milestonesCleared + choresThisWeek.length + ex.weekDaysHit;
 
   return (
     <div className="hub" data-tod={tod} data-accent="honey">
@@ -119,7 +116,7 @@ export default function RecapPage() {
             <p className="recap-big-label">win{wins === 1 ? "" : "s"} this week</p>
             <p className="note" style={{ marginTop: 4 }}>{momentumLine(wins)}</p>
             <p className="recap-breakdown">
-              {habitTicks} habit tick{habitTicks === 1 ? "" : "s"} · {milestonesCleared} milestone{milestonesCleared === 1 ? "" : "s"} · {choresThisWeek.length} chore{choresThisWeek.length === 1 ? "" : "s"}
+              {habitTicks} habit tick{habitTicks === 1 ? "" : "s"} · {milestonesCleared} milestone{milestonesCleared === 1 ? "" : "s"} · {choresThisWeek.length} chore{choresThisWeek.length === 1 ? "" : "s"} · {ex.weekDaysHit} ride{ex.weekDaysHit === 1 ? "" : "s"}
             </p>
           </div>
         </section>
@@ -178,6 +175,32 @@ export default function RecapPage() {
                   </Link>
                 );
               })}
+            </div>
+          </section>
+        )}
+
+        {workouts.length > 0 && (
+          <section className="tile" style={{ marginTop: 16 }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
+              <p className="eyebrow"><span className="dot" /> on the bike</p>
+              <span className="streak">🔥&#8202;<b>{ex.streak}</b>&#8202;day streak</span>
+            </div>
+            <div className="ex-week">
+              <div className="week-dots">
+                {ex.week.map((d, i) => (
+                  <span
+                    key={d.date}
+                    className={"wd" + (d.hit ? " on" : d.minutes > 0 ? " part" : "") + (d.date === todayStr ? " today" : "") + (d.date > todayStr ? " future" : "")}
+                    title={d.minutes > 0 ? `${d.minutes} min` : "no ride"}
+                  >
+                    {["M", "T", "W", "T", "F", "S", "S"][i]}
+                  </span>
+                ))}
+              </div>
+              <div className="ex-week-stats">
+                <span className={"ex-stat" + (ex.weekDaysHit >= WEEKLY_GOAL_DAYS ? " met" : "")}><b>{ex.weekDaysHit}</b>/{WEEKLY_GOAL_DAYS} days</span>
+                <span className="ex-stat"><b>{ex.weekMinutes}</b> min</span>
+              </div>
             </div>
           </section>
         )}

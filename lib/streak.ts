@@ -14,6 +14,15 @@ export function dayBefore(dateStr: string): string {
   return ymd(d);
 }
 
+// Monday→Sunday of the week containing `today`, as ymd strings.
+export function weekDates(today: Date): string[] {
+  const mondayOffset = (today.getDay() + 6) % 7;
+  const monday = new Date(today.getFullYear(), today.getMonth(), today.getDate() - mondayOffset);
+  return Array.from({ length: 7 }, (_, i) =>
+    ymd(new Date(monday.getFullYear(), monday.getMonth(), monday.getDate() + i))
+  );
+}
+
 // Consecutive days completed, counting back from today (or yesterday, so a
 // not-yet-ticked-today habit still shows the streak it's about to keep).
 // Returns 0 when the chain is broken — i.e. nothing done today or yesterday,

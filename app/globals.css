@@ -250,6 +250,31 @@ html, body { margin: 0; padding: 0; }
 .wd.on { background: var(--accent); border-color: transparent; color: var(--accent-ink); font-weight: 700; }
 .wd.today { box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 45%, transparent); }
 .wd.future { opacity: 0.4; }
+.wd.part { background: color-mix(in srgb, var(--accent) 24%, var(--field)); border-color: transparent; color: var(--text-soft); }
+
+.ex-today { display: flex; align-items: center; gap: 20px; margin-top: 6px; }
+.ex-today-body { flex: 1; min-width: 0; }
+.ex-today-num { font-size: 34px; font-weight: 800; color: var(--text); line-height: 1; letter-spacing: -0.02em; }
+.ex-today-num span { font-size: 16px; font-weight: 600; color: var(--text-faint); }
+.ex-sessions { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+.ex-chip { display: inline-flex; align-items: center; gap: 4px; font-family: var(--mono); font-size: 11.5px; color: var(--text-soft);
+  background: var(--field); border: 1px solid var(--border); border-radius: 999px; padding: 3px 5px 3px 10px; }
+.ex-chip-x { border: 0; background: transparent; color: var(--text-faint); cursor: pointer; font-size: 14px; line-height: 1; padding: 0 2px; }
+.ex-chip-x:hover { color: var(--text); }
+.ex-log { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 16px; }
+.ex-quick { font-family: var(--font); font-size: 13px; font-weight: 600; color: var(--text); cursor: pointer;
+  background: var(--field); border: 1px solid var(--border-2); border-radius: 999px; padding: 9px 15px; transition: border-color .15s, background .15s; }
+.ex-quick:hover { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 12%, var(--field)); }
+.ex-custom { display: flex; gap: 6px; align-items: center; margin-left: auto; }
+.ex-custom input { width: 68px; border: 1px solid var(--border); border-radius: 10px; background: var(--field); color: var(--text);
+  font-family: var(--font); font-size: 13px; padding: 8px 10px; }
+.ex-custom input:focus { outline: none; border-color: var(--accent); }
+.ex-week { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 14px; margin-top: 12px; }
+.ex-week-stats { display: flex; gap: 16px; }
+.ex-stat { font-family: var(--mono); font-size: 12px; color: var(--text-soft); }
+.ex-stat b { font-size: 18px; color: var(--text); font-weight: 700; }
+.ex-stat.met b { color: var(--accent-ink); }
+.bike-week { font-family: var(--mono); font-size: 11px; color: var(--text-soft); }
 .recap-goals { display: flex; flex-direction: column; gap: 4px; margin-top: 8px; }
 .recap-goal { display: flex; align-items: center; gap: 14px; padding: 10px 0; border-top: 1px solid var(--border); text-decoration: none; color: var(--text); }
 .recap-goal:first-child { border-top: 0; }
