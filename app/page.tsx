@@ -891,6 +891,9 @@ export default function Home() {
               <Link href="/today" className="searchpill" aria-label="Today's brief">
                 ☀ Today
               </Link>
+              <Link href="/sports" className="searchpill" aria-label="Sports">
+                ⚾ Sports
+              </Link>
               <button
                 className="searchpill"
                 onClick={() => window.dispatchEvent(new Event("the-lab:search"))}

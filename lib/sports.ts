@@ -34,11 +34,31 @@ export type Golf = {
   leaders: GolfLeader[];
 } | null;
 
+export type TennisSide = { name: string; sets: number[]; winner: boolean };
+export type TennisMatch = {
+  id: string;
+  state: "pre" | "in" | "post";
+  detail: string;
+  startMs: number;
+  round: string;
+  a: TennisSide;
+  b: TennisSide;
+  broadcasts: string[];
+};
+export type TennisEvent = {
+  tour: string; // ATP / WTA
+  name: string;
+  detail: string;
+  major: boolean;
+  matches: TennisMatch[];
+};
+
 export type SportsData = {
   generatedAt: number;
   today: Game[];
   yesterday: Game[];
   golf: Golf;
+  tennis: TennisEvent[];
 };
 
 // The Cubs are always a favorite; the rest come from the user's list.

@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import type { Game, Golf, Team } from "@/lib/sports";
+import type { Game, Golf, Team, TennisEvent, TennisMatch } from "@/lib/sports";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -8,8 +8,17 @@ const BASE = "https://site.api.espn.com/apis/site/v2/sports";
 const LEAGUES: { key: string; path: string; close: number }[] = [
   { key: "MLB", path: "baseball/mlb", close: 1 },
   { key: "NFL", path: "football/nfl", close: 3 },
-  { key: "EPL", path: "soccer/eng.1", close: 1 },
   { key: "NHL", path: "hockey/nhl", close: 1 },
+  { key: "EPL", path: "soccer/eng.1", close: 1 },
+  { key: "UCL", path: "soccer/uefa.champions", close: 1 },
+  { key: "La Liga", path: "soccer/esp.1", close: 1 },
+  { key: "Serie A", path: "soccer/ita.1", close: 1 },
+  { key: "Bundesliga", path: "soccer/ger.1", close: 1 },
+  { key: "MLS", path: "soccer/usa.1", close: 1 },
+];
+const TENNIS = [
+  { tour: "ATP", path: "tennis/atp" },
+  { tour: "WTA", path: "tennis/wta" },
 ];
 
 // A marquee national window vs. a regional sports network. RSNs (e.g. "NBC
@@ -139,6 +148,76 @@ async function fetchGolf(): Promise<Golf> {
   }
 }
 
+function etDay(iso: string): string {
+  return new Intl.DateTimeFormat("en-CA", { timeZone: "America/New_York" }).format(new Date(iso));
+}
+function etTodayDash(): string {
+  return new Intl.DateTimeFormat("en-CA", { timeZone: "America/New_York" }).format(new Date());
+}
+
+const MAJOR = /wimbledon|roland garros|french open|us open|australian open/i;
+
+function tennisMatch(m: any): TennisMatch | null {
+  const cs = m?.competitors ?? [];
+  if (cs.length < 2) return null;
+  const side = (c: any) => ({
+    name: c?.athlete?.displayName ?? c?.athlete?.shortName ?? "TBD",
+    sets: (c?.linescores ?? []).map((l: any) => l?.value).filter((v: any) => v != null),
+    winner: !!c?.winner,
+  });
+  const st = m?.status?.type ?? {};
+  const state: TennisMatch["state"] = st.state === "in" ? "in" : st.state === "post" ? "post" : "pre";
+  const broadcasts: string[] = [];
+  for (const b of m?.broadcasts ?? []) for (const n of b.names ?? []) if (n) broadcasts.push(n);
+  return {
+    id: String(m.id ?? Math.random()),
+    state,
+    detail: st.shortDetail ?? st.description ?? "",
+    startMs: m?.date ? new Date(m.date).getTime() : 0,
+    round: m?.round?.displayName ?? "",
+    a: side(cs[0]),
+    b: side(cs[1]),
+    broadcasts,
+  };
+}
+
+async function fetchTennis(path: string, tour: string, date: string): Promise<TennisEvent[]> {
+  try {
+    const r = await fetch(`${BASE}/${path}/scoreboard?dates=${date}`, { cache: "no-store" });
+    if (!r.ok) return [];
+    const d = await r.json();
+    const today = etTodayDash();
+    const out: TennisEvent[] = [];
+    for (const ev of d.events ?? []) {
+      const matches: TennisMatch[] = [];
+      for (const g of ev.groupings ?? []) {
+        const groupName: string = g?.grouping?.displayName ?? "";
+        if (/doubles/i.test(groupName)) continue; // singles are the draw for TV
+        for (const c of g.competitions ?? []) {
+          const m = tennisMatch(c);
+          if (!m) continue;
+          m.round = m.round || groupName;
+          // keep today's matches (or anything live)
+          if (m.state === "in" || (c.date && etDay(c.date) === today)) matches.push(m);
+        }
+      }
+      if (!matches.length) continue;
+      const order = { in: 0, pre: 1, post: 2 } as const;
+      matches.sort((x, y) => order[x.state] - order[y.state] || x.startMs - y.startMs);
+      out.push({
+        tour,
+        name: ev.name ?? tour,
+        detail: ev.status?.type?.shortDetail ?? ev.status?.type?.description ?? "",
+        major: MAJOR.test(ev.name ?? ""),
+        matches: matches.slice(0, 6),
+      });
+    }
+    return out;
+  } catch {
+    return [];
+  }
+}
+
 export async function GET() {
   const today = etDate(0);
   const yesterday = etDate(-1);
@@ -152,19 +231,22 @@ export async function GET() {
     )
   );
 
-  const [todayArrs, yestArrs, golf] = await Promise.all([
+  const [todayArrs, yestArrs, golf, tennisArrs] = await Promise.all([
     Promise.all(todayJobs),
     Promise.all(yestJobs),
     fetchGolf(),
+    Promise.all(TENNIS.map((t) => fetchTennis(t.path, t.tour, today))),
   ]);
 
   const todayGames = todayArrs.flat().sort((a, b) => a.startMs - b.startMs);
   const yesterdayGames = yestArrs.flat().sort((a, b) => b.score - a.score);
+  const tennis = tennisArrs.flat().sort((a, b) => Number(b.major) - Number(a.major));
 
   return NextResponse.json({
     generatedAt: Date.now(),
     today: todayGames,
     yesterday: yesterdayGames,
     golf,
+    tennis,
   });
 }

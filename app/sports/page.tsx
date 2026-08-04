@@ -15,7 +15,7 @@ function autoTod(): string {
   return "night";
 }
 
-const LEAGUE_ORDER = ["MLB", "NFL", "EPL", "NHL"];
+const LEAGUE_ORDER = ["MLB", "NFL", "NHL", "EPL", "UCL", "La Liga", "Serie A", "Bundesliga", "MLS"];
 
 export default function SportsPage() {
   const [tod, setTod] = useState("day");
@@ -164,6 +164,38 @@ export default function SportsPage() {
                     <div key={i} className="sports-golf-row"><span className="sg-rec">{l.pos}</span><span className="sg-name">{l.name}</span><span className="sg-score">{l.score}</span></div>
                   ))}
                 </div>
+              </section>
+            )}
+
+            {data.tennis.length > 0 && (
+              <section className="tile sports-tile">
+                <p className="eyebrow"><span className="dot" /> tennis</p>
+                {data.tennis.map((t, i) => (
+                  <div key={i} className="sports-lg">
+                    <p className="sports-lg-name">{t.tour} · {t.name}{t.major ? " ★" : ""}</p>
+                    {t.matches.map((m) => {
+                      const tv = m.broadcasts.find((b) => !/\.tv$/i.test(b)) ?? m.broadcasts[0];
+                      const when = m.state === "in" ? (m.detail || "Live") : m.state === "post" ? (m.detail || "Final")
+                        : m.startMs ? (() => { const mins = Math.round((m.startMs - now) / 60000); return mins <= 0 ? "Soon" : mins < 60 ? `in ${mins}m` : `in ${Math.floor(mins / 60)}h`; })() : "";
+                      return (
+                        <div className="sg" key={m.id}>
+                          <div className="sg-teams">
+                            {[m.a, m.b].map((s, j) => (
+                              <div key={j} className={"sg-team" + (s.winner ? " win" : "")}>
+                                <span className="sg-name">{s.name}{m.round ? <span className="sg-rec"> {m.round}</span> : null}</span>
+                                <span className="sg-score" style={{ minWidth: "auto", letterSpacing: "0.08em" }}>{s.sets.join(" ")}</span>
+                              </div>
+                            ))}
+                          </div>
+                          <div className="sg-side">
+                            <span className={"sg-when" + (m.state === "in" ? " live" : "")}>{m.state === "in" ? "● " : ""}{when}</span>
+                            {tv && m.state !== "post" && <span className="sg-tv">{tv}</span>}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                ))}
               </section>
             )}
 
