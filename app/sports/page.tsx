@@ -163,9 +163,20 @@ export default function SportsPage() {
   const d = new Date(now);
   const dateline = `${DAYS[d.getDay()]}, ${MONTHS[d.getMonth()]} ${d.getDate()}, ${d.getFullYear()}`;
 
+  // "Good while you work" = on during ~8am–6pm Eastern.
+  const etHour = (ms: number) => {
+    try { return parseInt(new Intl.DateTimeFormat("en-US", { timeZone: "America/New_York", hour: "2-digit", hourCycle: "h23" }).format(new Date(ms)), 10); }
+    catch { return new Date(ms).getHours(); }
+  };
+  const isDaytime = (ms: number) => { const h = etHour(ms); return h >= 8 && h < 18; };
+  const daytimeGames = data ? data.today.filter((g) => g.state !== "post" && isDaytime(g.startMs)) : [];
+  const daytimeGolf = data ? data.golf.filter((g) => g.state === "in") : [];
+  const daytimeTennis = data ? data.tennis.filter((t) => t.matches.some((m) => m.state === "in" || (m.startMs > 0 && isDaytime(m.startMs)))) : [];
+  const hasDaytime = daytimeGames.length + daytimeGolf.length + daytimeTennis.length > 0;
+
   const TennisRows = ({ t }: { t: TennisEvent }) => (
     <div className="sports-lg np-col-item">
-      <p className="sports-lg-name">{t.tour} · {t.name}{t.major ? " ★" : ""}</p>
+      <p className="sports-lg-name">{t.tour} · {t.name}{t.major ? <span className="np-slam"> ◆ Grand Slam</span> : ""}</p>
       {t.matches.map((m) => {
         const tv = m.broadcasts.find((b) => !/\.tv$/i.test(b)) ?? m.broadcasts[0];
         const when = m.state === "in" ? (m.detail || "Live") : m.state === "post" ? (m.detail || "Final")
@@ -213,6 +224,28 @@ export default function SportsPage() {
 
         {data && (
           <>
+            <section className="np-section np-daytime">
+              <h2 className="np-head">Good While You Work</h2>
+              {hasDaytime ? (
+                <>
+                  <p className="np-note">On during your day — put it on in the background.</p>
+                  {daytimeGolf.map((g, i) => (
+                    <div key={"g" + i} className="np-daybit">
+                      <span className="np-daybit-ico">⛳</span><b>{g.tour}{g.women ? " · Women's" : ""}</b> {g.name}{g.leaders[0] ? ` — ${g.leaders[0].name} ${g.leaders[0].score}` : ""}
+                    </div>
+                  ))}
+                  {daytimeTennis.map((t, i) => (
+                    <div key={"t" + i} className="np-daybit">
+                      <span className="np-daybit-ico">🎾</span><b>{t.tour}</b> {t.name}{t.major ? <span className="np-slam"> · Grand Slam</span> : ""} — {t.matches.length} match{t.matches.length === 1 ? "" : "es"}
+                    </div>
+                  ))}
+                  {daytimeGames.map((g) => <Row key={g.id} g={g} showReasons />)}
+                </>
+              ) : (
+                <p className="np-note">Quiet daytime — nothing much on until this evening.</p>
+              )}
+            </section>
+
             {live.length > 0 && (
               <section className="np-section">
                 <h2 className="np-head np-live">Live Now</h2>
@@ -229,15 +262,20 @@ export default function SportsPage() {
               )}
             </section>
 
-            {data.golf && (
+            {data.golf.length > 0 && (
               <section className="np-section">
-                <h2 className="np-head">Golf — {data.golf.detail}</h2>
-                <p className="sports-golf-name">{data.golf.name}</p>
-                <div className="sports-golf-board">
-                  {data.golf.leaders.map((l, i) => (
-                    <div key={i} className="sports-golf-row"><span className="sg-rec">{l.pos}</span><span className="sg-name">{l.name}</span><span className="sg-score">{l.score}</span></div>
-                  ))}
-                </div>
+                <h2 className="np-head">Golf</h2>
+                {data.golf.map((gv, gi) => (
+                  <div key={gi} className="np-col-item" style={{ marginBottom: 16 }}>
+                    <p className="sports-lg-name">{gv.tour}{gv.women ? " · Women's" : ""} · {gv.detail}</p>
+                    <p className="sports-golf-name">{gv.name}</p>
+                    <div className="sports-golf-board">
+                      {gv.leaders.map((l, i) => (
+                        <div key={i} className="sports-golf-row"><span className="sg-rec">{l.pos}</span><span className="sg-name">{l.name}</span><span className="sg-score">{l.score}</span></div>
+                      ))}
+                    </div>
+                  </div>
+                ))}
               </section>
             )}
 

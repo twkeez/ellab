@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import type { Game, Golf, Team, TennisEvent, TennisMatch } from "@/lib/sports";
+import type { Game, GolfEvent, Team, TennisEvent, TennisMatch } from "@/lib/sports";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -19,6 +19,11 @@ const LEAGUES: { key: string; path: string; close: number }[] = [
 const TENNIS = [
   { tour: "ATP", path: "tennis/atp" },
   { tour: "WTA", path: "tennis/wta" },
+];
+const GOLF = [
+  { tour: "PGA", path: "golf/pga", women: false },
+  { tour: "LPGA", path: "golf/lpga", women: true },
+  { tour: "DP World", path: "golf/eur", women: false },
 ];
 
 // A marquee national window vs. a regional sports network. RSNs (e.g. "NBC
@@ -124,9 +129,9 @@ async function fetchBoard(path: string, date: string): Promise<any[]> {
   }
 }
 
-async function fetchGolf(): Promise<Golf> {
+async function fetchGolf(path: string, tour: string, women: boolean): Promise<GolfEvent | null> {
   try {
-    const r = await fetch(`${BASE}/golf/pga/scoreboard`, { cache: "no-store" });
+    const r = await fetch(`${BASE}/${path}/scoreboard`, { cache: "no-store" });
     if (!r.ok) return null;
     const d = await r.json();
     const ev = d.events?.[0];
@@ -138,7 +143,9 @@ async function fetchGolf(): Promise<Golf> {
       score: c.score ?? c.linescores?.slice(-1)[0]?.value ?? "",
     }));
     return {
-      name: ev.name ?? "PGA Tour",
+      tour,
+      women,
+      name: ev.name ?? tour,
       detail: ev.status?.type?.shortDetail ?? ev.status?.type?.description ?? "",
       state: ev.status?.type?.state ?? "pre",
       leaders,
@@ -231,16 +238,21 @@ export async function GET() {
     )
   );
 
-  const [todayArrs, yestArrs, golf, tennisArrs] = await Promise.all([
+  const [todayArrs, yestArrs, golfArr, tennisArrs] = await Promise.all([
     Promise.all(todayJobs),
     Promise.all(yestJobs),
-    fetchGolf(),
+    Promise.all(GOLF.map((g) => fetchGolf(g.path, g.tour, g.women))),
     Promise.all(TENNIS.map((t) => fetchTennis(t.path, t.tour, today))),
   ]);
 
   const todayGames = todayArrs.flat().sort((a, b) => a.startMs - b.startMs);
   const yesterdayGames = yestArrs.flat().sort((a, b) => b.score - a.score);
-  const tennis = tennisArrs.flat().sort((a, b) => Number(b.major) - Number(a.major));
+  // Tournaments in progress first, then upcoming; declared order (PGA, LPGA, DP World) breaks ties.
+  const golf = (golfArr.filter(Boolean) as GolfEvent[]).sort((a, b) => Number(b.state === "in") - Number(a.state === "in"));
+  // Grand slams first, then women's before men's.
+  const tennis = tennisArrs.flat().sort(
+    (a, b) => Number(b.major) - Number(a.major) || Number(b.tour === "WTA") - Number(a.tour === "WTA")
+  );
 
   return NextResponse.json({
     generatedAt: Date.now(),

@@ -27,12 +27,14 @@ export type Game = {
 };
 
 export type GolfLeader = { pos: string; name: string; score: string };
-export type Golf = {
+export type GolfEvent = {
+  tour: string; // PGA / LPGA / DP World
+  women: boolean;
   name: string;
   detail: string;
   state: string;
   leaders: GolfLeader[];
-} | null;
+};
 
 export type TennisSide = { name: string; sets: number[]; winner: boolean };
 export type TennisMatch = {
@@ -57,7 +59,7 @@ export type SportsData = {
   generatedAt: number;
   today: Game[];
   yesterday: Game[];
-  golf: Golf;
+  golf: GolfEvent[];
   tennis: TennisEvent[];
 };
 

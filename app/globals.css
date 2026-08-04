@@ -324,6 +324,10 @@ html, body { margin: 0; padding: 0; }
 .np-col-item { break-inside: avoid; margin-bottom: 12px; }
 @media (max-width: 640px) { .np-cols { column-count: 1; } }
 .np-foot { text-align: center; font-family: var(--mono); font-size: 12px; letter-spacing: 0.35em; color: var(--ink-faint); padding-top: 22px; }
+.np-daybit { font-size: 14px; line-height: 1.4; padding: 5px 0; color: var(--ink); }
+.np-daybit-ico { display: inline-block; width: 24px; }
+.np-daybit b { font-weight: 700; }
+.np-slam { color: var(--np-red); font-weight: 700; font-family: var(--mono); font-size: 11px; letter-spacing: 0.04em; }
 /* box scores set into the paper */
 .newspaper .sg { border-top-color: var(--rule); }
 .newspaper .sg.fav { background: color-mix(in srgb, var(--accent) 13%, transparent); }
