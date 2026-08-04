@@ -27,6 +27,7 @@ export default function SportsPage() {
   const [favs, setFavs] = useState<Fav[]>([]);
   const [favInput, setFavInput] = useState("");
   const [favErr, setFavErr] = useState(false);
+  const [reminders, setReminders] = useState<{ id: number; game_id: string }[]>([]);
 
   useEffect(() => { setTod(autoTod()); }, []);
   useEffect(() => { const id = setInterval(() => setNow(Date.now()), 30000); return () => clearInterval(id); }, []);
@@ -50,6 +51,8 @@ export default function SportsPage() {
     (async () => {
       const { data } = await supabase!.from("sports_favorites").select("id,name").order("created_at");
       if (alive && data) setFavs(data as Fav[]);
+      const { data: rem } = await supabase!.from("game_reminders").select("id,game_id").eq("sent", false);
+      if (alive && rem) setReminders(rem as { id: number; game_id: string }[]);
     })();
     return () => { alive = false; };
   }, []);
@@ -74,6 +77,23 @@ export default function SportsPage() {
   const removeFav = async (f: Fav) => {
     setFavs((fs) => fs.filter((x) => x.id !== f.id));
     if (supabase) await supabase.from("sports_favorites").delete().eq("id", f.id);
+  };
+
+  const toggleReminder = async (g: Game) => {
+    const existing = reminders.find((r) => r.game_id === g.id);
+    if (existing) {
+      setReminders((rs) => rs.filter((r) => r.id !== existing.id));
+      if (supabase && existing.id > 0) await supabase.from("game_reminders").delete().eq("id", existing.id);
+      return;
+    }
+    const tempId = -Date.now();
+    setReminders((rs) => [...rs, { id: tempId, game_id: g.id }]);
+    const tv = g.broadcasts.find((b) => !/\.tv$/i.test(b)) ?? g.broadcasts[0] ?? null;
+    const row = { game_id: g.id, league: g.league, matchup: `${g.away.short} @ ${g.home.short}`, start_iso: g.startISO, tv };
+    if (supabase) {
+      const { data } = await supabase.from("game_reminders").insert(row).select("id,game_id").single();
+      if (data) setReminders((rs) => rs.map((r) => (r.id === tempId ? (data as { id: number; game_id: string }) : r)));
+    }
   };
 
   const eff = (g: Game) => g.score + (isFavorite(g, favNames) ? 6 : 0);
@@ -103,8 +123,20 @@ export default function SportsPage() {
   const Row = ({ g, showReasons }: { g: Game; showReasons?: boolean }) => {
     const fav = isFavorite(g, favNames);
     const tv = tvOf(g);
+    const reminded = reminders.some((r) => r.game_id === g.id);
     return (
       <div className={"sg" + (fav ? " fav" : "")}>
+        {g.state === "pre" && (
+          <button
+            className={"remind-btn" + (reminded ? " on" : "")}
+            aria-label={reminded ? "Cancel reminder" : "Remind me when it starts"}
+            aria-pressed={reminded}
+            title={reminded ? "You'll get a nudge before it starts" : "Remind me when it starts"}
+            onClick={() => toggleReminder(g)}
+          >
+            {reminded ? "🔔" : "+"}
+          </button>
+        )}
         <div className="sg-teams">
           {[g.away, g.home].map((t, i) => (
             <div key={i} className={"sg-team" + (t.winner ? " win" : "")}>
