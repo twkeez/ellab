@@ -1,0 +1,218 @@
+"use client";
+
+import { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
+import { supabase } from "@/lib/supabase";
+import { DEFAULT_FAVORITES, isFavorite, whenLabel, type SportsData, type Game } from "@/lib/sports";
+
+type Fav = { id: number; name: string };
+
+function autoTod(): string {
+  const h = new Date().getHours();
+  if (h >= 5 && h < 11) return "morning";
+  if (h >= 11 && h < 17) return "day";
+  if (h >= 17 && h < 21) return "evening";
+  return "night";
+}
+
+const LEAGUE_ORDER = ["MLB", "NFL", "EPL", "NHL"];
+
+export default function SportsPage() {
+  const [tod, setTod] = useState("day");
+  const [data, setData] = useState<SportsData | null>(null);
+  const [err, setErr] = useState(false);
+  const [now, setNow] = useState(() => Date.now());
+  const [favs, setFavs] = useState<Fav[]>([]);
+  const [favInput, setFavInput] = useState("");
+
+  useEffect(() => { setTod(autoTod()); }, []);
+  useEffect(() => { const id = setInterval(() => setNow(Date.now()), 30000); return () => clearInterval(id); }, []);
+
+  useEffect(() => {
+    let alive = true;
+    (async () => {
+      try {
+        const r = await fetch("/api/sports");
+        if (!r.ok) throw new Error();
+        const d = await r.json();
+        if (alive) setData(d);
+      } catch { if (alive) setErr(true); }
+    })();
+    return () => { alive = false; };
+  }, []);
+
+  useEffect(() => {
+    if (!supabase) return;
+    let alive = true;
+    (async () => {
+      const { data } = await supabase!.from("sports_favorites").select("id,name").order("created_at");
+      if (alive && data) setFavs(data as Fav[]);
+    })();
+    return () => { alive = false; };
+  }, []);
+
+  const favNames = useMemo(() => [...DEFAULT_FAVORITES, ...favs.map((f) => f.name)], [favs]);
+
+  const addFav = async () => {
+    const v = favInput.trim();
+    if (!v) return;
+    setFavInput("");
+    if (supabase) {
+      const { data } = await supabase.from("sports_favorites").insert({ name: v }).select("id,name").single();
+      if (data) setFavs((f) => [...f, data as Fav]);
+    } else {
+      setFavs((f) => [...f, { id: Date.now(), name: v }]);
+    }
+  };
+  const removeFav = async (f: Fav) => {
+    setFavs((fs) => fs.filter((x) => x.id !== f.id));
+    if (supabase) await supabase.from("sports_favorites").delete().eq("id", f.id);
+  };
+
+  const eff = (g: Game) => g.score + (isFavorite(g, favNames) ? 6 : 0);
+
+  const worthWatching = useMemo(() => {
+    if (!data) return [];
+    return data.today
+      .filter((g) => g.state !== "post")
+      .map((g) => ({ g, s: eff(g) }))
+      .filter((x) => x.s > 0)
+      .sort((a, b) => b.s - a.s)
+      .slice(0, 8)
+      .map((x) => x.g);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [data, favNames]);
+
+  const live = useMemo(() => (data?.today ?? []).filter((g) => g.state === "in"), [data]);
+
+  const byLeague = (games: Game[]) => {
+    const m: Record<string, Game[]> = {};
+    for (const g of games) (m[g.league] ||= []).push(g);
+    return LEAGUE_ORDER.filter((l) => m[l]?.length).map((l) => [l, m[l]] as [string, Game[]]);
+  };
+
+  const tvOf = (g: Game) => g.broadcasts.find((b) => g.national && /fox|espn|abc|nbc|tnt|tbs|cbs|peacock|apple|prime|usa|network/i.test(b)) || g.broadcasts[0] || "";
+
+  const Row = ({ g, showReasons }: { g: Game; showReasons?: boolean }) => {
+    const fav = isFavorite(g, favNames);
+    const tv = tvOf(g);
+    return (
+      <div className={"sg" + (fav ? " fav" : "")}>
+        <div className="sg-teams">
+          {[g.away, g.home].map((t, i) => (
+            <div key={i} className={"sg-team" + (t.winner ? " win" : "")}>
+              <span className="sg-name">{t.short}{t.record ? <span className="sg-rec"> {t.record}</span> : null}</span>
+              <span className="sg-score">{g.state === "pre" ? "" : t.score ?? ""}</span>
+            </div>
+          ))}
+        </div>
+        <div className="sg-side">
+          <span className={"sg-when" + (g.state === "in" ? " live" : "")}>{g.state === "in" ? "● " : ""}{whenLabel(g, now)}</span>
+          {tv && g.state !== "post" && <span className="sg-tv">{tv}</span>}
+          {(showReasons || fav) && (
+            <div className="sg-flags">
+              {fav && <span className="sg-flag star">★ your team</span>}
+              {g.drama && <span className="sg-flag hot">instant classic</span>}
+              {showReasons && g.reasons.slice(0, 2).map((r, i) => <span key={i} className="sg-flag">{r}</span>)}
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  };
+
+  return (
+    <div className="hub" data-tod={tod} data-accent="honey">
+      <div className="aurora" aria-hidden="true"><div className="blob b1" /><div className="blob b2" /><div className="blob b3" /></div>
+
+      <div className="studio-wrap" style={{ maxWidth: 820 }}>
+        <header className="studio-top">
+          <div>
+            <p className="eyebrow"><span className="dot" /> sports</p>
+            <h1 className="studio-h1" style={{ fontFamily: "var(--serif)" }}>The Sports Page</h1>
+          </div>
+          <Link href="/" className="mini" style={{ marginTop: 0 }}>← back to the lab</Link>
+        </header>
+
+        {!data && !err && <p className="gtext" style={{ color: "var(--text-soft)" }}>Pulling the scores…</p>}
+        {err && <p className="gtext" style={{ color: "var(--text-soft)" }}>Couldn&apos;t reach the scores right now.</p>}
+
+        {data && (
+          <>
+            {live.length > 0 && (
+              <section className="tile sports-tile">
+                <p className="eyebrow"><span className="dot" /> live now</p>
+                {live.map((g) => <Row key={g.id} g={g} showReasons />)}
+              </section>
+            )}
+
+            <section className="tile sports-tile">
+              <p className="eyebrow"><span className="dot" /> worth watching today</p>
+              {worthWatching.length === 0 ? (
+                <p className="gtext" style={{ color: "var(--text-soft)", marginTop: 8 }}>Nothing jumping out today — check the full slate below.</p>
+              ) : (
+                worthWatching.map((g) => <Row key={g.id} g={g} showReasons />)
+              )}
+            </section>
+
+            {data.golf && (
+              <section className="tile sports-tile">
+                <p className="eyebrow"><span className="dot" /> golf · {data.golf.detail}</p>
+                <p className="sports-golf-name">{data.golf.name}</p>
+                <div className="sports-golf-board">
+                  {data.golf.leaders.map((l, i) => (
+                    <div key={i} className="sports-golf-row"><span className="sg-rec">{l.pos}</span><span className="sg-name">{l.name}</span><span className="sg-score">{l.score}</span></div>
+                  ))}
+                </div>
+              </section>
+            )}
+
+            <section className="tile sports-tile">
+              <p className="eyebrow"><span className="dot" /> today&apos;s slate</p>
+              {byLeague(data.today).length === 0 ? (
+                <p className="gtext" style={{ color: "var(--text-soft)", marginTop: 8 }}>No games scheduled today.</p>
+              ) : (
+                byLeague(data.today).map(([lg, games]) => (
+                  <div key={lg} className="sports-lg">
+                    <p className="sports-lg-name">{lg}</p>
+                    {games.map((g) => <Row key={g.id} g={g} />)}
+                  </div>
+                ))
+              )}
+            </section>
+
+            <section className="tile sports-tile">
+              <p className="eyebrow"><span className="dot" /> yesterday&apos;s scores</p>
+              {byLeague(data.yesterday).length === 0 ? (
+                <p className="gtext" style={{ color: "var(--text-soft)", marginTop: 8 }}>No finals from yesterday.</p>
+              ) : (
+                byLeague(data.yesterday).map(([lg, games]) => (
+                  <div key={lg} className="sports-lg">
+                    <p className="sports-lg-name">{lg}</p>
+                    {games.map((g) => <Row key={g.id} g={g} />)}
+                  </div>
+                ))
+              )}
+            </section>
+
+            <section className="tile sports-tile">
+              <p className="eyebrow"><span className="dot" /> your teams</p>
+              <div className="sports-favs">
+                <span className="sports-fav pinned">Cubs ⚾</span>
+                {favs.map((f) => (
+                  <span key={f.id} className="sports-fav">{f.name}<button className="ex-chip-x" aria-label={"Remove " + f.name} onClick={() => removeFav(f)}>×</button></span>
+                ))}
+              </div>
+              <div className="step-add" style={{ marginTop: 10 }}>
+                <input placeholder="add a team to flag (e.g. Bears, Arsenal)…" aria-label="Add a favorite team" value={favInput}
+                  onChange={(e) => setFavInput(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") addFav(); }} />
+                <button className="iconbtn" aria-label="Add team" onClick={addFav}>+</button>
+              </div>
+              <p className="note" style={{ marginTop: 10 }}>Games with your teams get starred and bumped up the &ldquo;worth watching&rdquo; list.</p>
+            </section>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}

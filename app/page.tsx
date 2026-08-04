@@ -8,6 +8,7 @@ import Ring from "@/components/Ring";
 import { countdown, goalProgress } from "@/lib/goals";
 import { pad, ymd, habitStreak } from "@/lib/streak";
 import { exerciseStats, DAILY_GOAL_MIN, WEEKLY_GOAL_DAYS, type Workout } from "@/lib/exercise";
+import { isFavorite, whenLabel, DEFAULT_FAVORITES, type SportsData } from "@/lib/sports";
 import { WxIcon, SunriseIcon, SunsetIcon, DropletIcon, aqiColor } from "@/components/WxIcons";
 
 type Mode = "auto" | "morning" | "day" | "evening" | "night";
@@ -251,6 +252,7 @@ export default function Home() {
   const [spotSteps, setSpotSteps] = useState<SpotStep[]>([]);
 
   const [workouts, setWorkouts] = useState<Workout[]>([]);
+  const [sports, setSports] = useState<SportsData | null>(null);
 
   const [sparkIndex, setSparkIndex] = useState(0);
 
@@ -423,6 +425,21 @@ export default function Home() {
     load();
     const id = setInterval(load, 1800000); // refresh every 30 min
     return () => { alive = false; clearInterval(id); };
+  }, []);
+
+  useEffect(() => {
+    let alive = true;
+    (async () => {
+      try {
+        const r = await fetch("/api/sports");
+        if (!r.ok) return;
+        const d = await r.json();
+        if (alive) setSports(d);
+      } catch {
+        // leave the sports tile in its loading state on failure
+      }
+    })();
+    return () => { alive = false; };
   }, []);
 
   const loadRecipe = useCallback(async () => {
@@ -761,6 +778,14 @@ export default function Home() {
 
   const todayStr = ymd(now ?? new Date());
   const ex = exerciseStats(workouts, now ?? new Date());
+  const sportsPick = useMemo(() => {
+    if (!sports) return null;
+    const ranked = sports.today
+      .filter((g) => g.state !== "post")
+      .map((g) => ({ g, s: g.score + (isFavorite(g, DEFAULT_FAVORITES) ? 6 : 0) }))
+      .sort((a, b) => b.s - a.s);
+    return { count: ranked.filter((x) => x.s >= 2).length, top: ranked[0]?.g ?? null };
+  }, [sports]);
   const visibleRadar = radar.filter((m) => radarFilter === "all" || m.type === radarFilter);
   const rankedNews = useMemo(() => rankNews(news, dismissals), [news, dismissals]);
 
@@ -1314,6 +1339,34 @@ export default function Home() {
             </div>
           </section>
 
+          <section className="tile">
+            <p className="eyebrow"><span className="dot" /> tonight&apos;s sports</p>
+            <span className="fill" />
+            {sportsPick?.top ? (
+              <>
+                <div className="focus-big" style={{ fontSize: "1.15rem" }}>
+                  {sportsPick.top.away.short} <span style={{ color: "var(--text-faint)" }}>@</span> {sportsPick.top.home.short}
+                </div>
+                <p className="note" style={{ marginTop: 2 }}>
+                  {whenLabel(sportsPick.top, now ? now.getTime() : Date.now())}
+                  {(() => {
+                    const tv = sportsPick.top.broadcasts.find((b) => !/\.tv$/i.test(b)) ?? sportsPick.top.broadcasts[0];
+                    return tv ? ` · ${tv}` : "";
+                  })()}
+                </p>
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, marginTop: 8 }}>
+                  <span className="bike-week">{sportsPick.count} worth watching</span>
+                  <Link href="/sports" className="mini" style={{ marginTop: 0 }}>All →</Link>
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="focus-big" style={{ fontSize: "1.1rem", color: "var(--text-soft)" }}>Checking the slate…</div>
+                <Link href="/sports" className="mini">Open sports →</Link>
+              </>
+            )}
+          </section>
+
           <section className="tile c2 studio">
             <p className="eyebrow"><span className="dot" /> writing studio · ai</p>
             <span className="fill" />
@@ -1332,6 +1385,7 @@ export default function Home() {
           <section className="tile c2 tools">
             <p className="eyebrow" style={{ width: "100%" }}><span className="dot" /> jump into</p>
             <Link href="/recap" className="toolbtn">This week</Link>
+            <Link href="/sports" className="toolbtn">Sports</Link>
             <Link href="/exercise" className="toolbtn">On the bike</Link>
             <Link href="/goals" className="toolbtn">Goals</Link>
             <Link href="/recipes" className="toolbtn">Recipes</Link>
