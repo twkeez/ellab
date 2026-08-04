@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { supabase } from "@/lib/supabase";
-import { DEFAULT_FAVORITES, isFavorite, whenLabel, type SportsData, type Game } from "@/lib/sports";
+import { DEFAULT_FAVORITES, isFavorite, whenLabel, type SportsData, type Game, type TennisEvent } from "@/lib/sports";
 
 type Fav = { id: number; name: string };
 
@@ -16,6 +16,8 @@ function autoTod(): string {
 }
 
 const LEAGUE_ORDER = ["MLB", "NFL", "NHL", "EPL", "UCL", "La Liga", "Serie A", "Bundesliga", "MLS"];
+const DAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+const MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
 
 export default function SportsPage() {
   const [tod, setTod] = useState("day");
@@ -126,43 +128,78 @@ export default function SportsPage() {
     );
   };
 
+  const d = new Date(now);
+  const dateline = `${DAYS[d.getDay()]}, ${MONTHS[d.getMonth()]} ${d.getDate()}, ${d.getFullYear()}`;
+
+  const TennisRows = ({ t }: { t: TennisEvent }) => (
+    <div className="sports-lg np-col-item">
+      <p className="sports-lg-name">{t.tour} · {t.name}{t.major ? " ★" : ""}</p>
+      {t.matches.map((m) => {
+        const tv = m.broadcasts.find((b) => !/\.tv$/i.test(b)) ?? m.broadcasts[0];
+        const when = m.state === "in" ? (m.detail || "Live") : m.state === "post" ? (m.detail || "Final")
+          : m.startMs ? (() => { const mins = Math.round((m.startMs - now) / 60000); return mins <= 0 ? "Soon" : mins < 60 ? `in ${mins}m` : `in ${Math.floor(mins / 60)}h`; })() : "";
+        return (
+          <div className="sg" key={m.id}>
+            <div className="sg-teams">
+              {[m.a, m.b].map((s, j) => (
+                <div key={j} className={"sg-team" + (s.winner ? " win" : "")}>
+                  <span className="sg-name">{s.name}{m.round ? <span className="sg-rec"> {m.round}</span> : null}</span>
+                  <span className="sg-score" style={{ minWidth: "auto", letterSpacing: "0.08em" }}>{s.sets.join(" ")}</span>
+                </div>
+              ))}
+            </div>
+            <div className="sg-side">
+              <span className={"sg-when" + (m.state === "in" ? " live" : "")}>{m.state === "in" ? "● " : ""}{when}</span>
+              {tv && m.state !== "post" && <span className="sg-tv">{tv}</span>}
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+
   return (
     <div className="hub" data-tod={tod} data-accent="honey">
       <div className="aurora" aria-hidden="true"><div className="blob b1" /><div className="blob b2" /><div className="blob b3" /></div>
 
-      <div className="studio-wrap" style={{ maxWidth: 820 }}>
-        <header className="studio-top">
-          <div>
-            <p className="eyebrow"><span className="dot" /> sports</p>
-            <h1 className="studio-h1" style={{ fontFamily: "var(--serif)" }}>The Sports Page</h1>
-          </div>
-          <Link href="/" className="mini" style={{ marginTop: 0 }}>← back to the lab</Link>
-        </header>
+      <div className="newspaper">
+        <div className="np-topbar">
+          <Link href="/" className="np-back">← The Lab</Link>
+          <span>Late Edition · No. 1</span>
+        </div>
+        <div className="np-plate">
+          <h1 className="np-name">The Sports Page</h1>
+        </div>
+        <div className="np-folio">
+          <span>{dateline}</span>
+          <span className="np-folio-mid">All Scores · All Leagues</span>
+          <span>Pittsburgh</span>
+        </div>
 
-        {!data && !err && <p className="gtext" style={{ color: "var(--text-soft)" }}>Pulling the scores…</p>}
-        {err && <p className="gtext" style={{ color: "var(--text-soft)" }}>Couldn&apos;t reach the scores right now.</p>}
+        {!data && !err && <p className="np-note">Pulling the wire…</p>}
+        {err && <p className="np-note">Couldn&apos;t reach the scores right now.</p>}
 
         {data && (
           <>
             {live.length > 0 && (
-              <section className="tile sports-tile">
-                <p className="eyebrow"><span className="dot" /> live now</p>
+              <section className="np-section">
+                <h2 className="np-head np-live">Live Now</h2>
                 {live.map((g) => <Row key={g.id} g={g} showReasons />)}
               </section>
             )}
 
-            <section className="tile sports-tile">
-              <p className="eyebrow"><span className="dot" /> worth watching today</p>
+            <section className="np-section np-lead">
+              <h2 className="np-head">Worth Watching Today</h2>
               {worthWatching.length === 0 ? (
-                <p className="gtext" style={{ color: "var(--text-soft)", marginTop: 8 }}>Nothing jumping out today — check the full slate below.</p>
+                <p className="np-note">Nothing jumping out today — see the full slate below.</p>
               ) : (
                 worthWatching.map((g) => <Row key={g.id} g={g} showReasons />)
               )}
             </section>
 
             {data.golf && (
-              <section className="tile sports-tile">
-                <p className="eyebrow"><span className="dot" /> golf · {data.golf.detail}</p>
+              <section className="np-section">
+                <h2 className="np-head">Golf — {data.golf.detail}</h2>
                 <p className="sports-golf-name">{data.golf.name}</p>
                 <div className="sports-golf-board">
                   {data.golf.leaders.map((l, i) => (
@@ -173,67 +210,48 @@ export default function SportsPage() {
             )}
 
             {data.tennis.length > 0 && (
-              <section className="tile sports-tile">
-                <p className="eyebrow"><span className="dot" /> tennis</p>
-                {data.tennis.map((t, i) => (
-                  <div key={i} className="sports-lg">
-                    <p className="sports-lg-name">{t.tour} · {t.name}{t.major ? " ★" : ""}</p>
-                    {t.matches.map((m) => {
-                      const tv = m.broadcasts.find((b) => !/\.tv$/i.test(b)) ?? m.broadcasts[0];
-                      const when = m.state === "in" ? (m.detail || "Live") : m.state === "post" ? (m.detail || "Final")
-                        : m.startMs ? (() => { const mins = Math.round((m.startMs - now) / 60000); return mins <= 0 ? "Soon" : mins < 60 ? `in ${mins}m` : `in ${Math.floor(mins / 60)}h`; })() : "";
-                      return (
-                        <div className="sg" key={m.id}>
-                          <div className="sg-teams">
-                            {[m.a, m.b].map((s, j) => (
-                              <div key={j} className={"sg-team" + (s.winner ? " win" : "")}>
-                                <span className="sg-name">{s.name}{m.round ? <span className="sg-rec"> {m.round}</span> : null}</span>
-                                <span className="sg-score" style={{ minWidth: "auto", letterSpacing: "0.08em" }}>{s.sets.join(" ")}</span>
-                              </div>
-                            ))}
-                          </div>
-                          <div className="sg-side">
-                            <span className={"sg-when" + (m.state === "in" ? " live" : "")}>{m.state === "in" ? "● " : ""}{when}</span>
-                            {tv && m.state !== "post" && <span className="sg-tv">{tv}</span>}
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                ))}
+              <section className="np-section">
+                <h2 className="np-head">Tennis</h2>
+                <div className="np-cols">
+                  {data.tennis.map((t, i) => <TennisRows key={i} t={t} />)}
+                </div>
               </section>
             )}
 
-            <section className="tile sports-tile">
-              <p className="eyebrow"><span className="dot" /> today&apos;s slate</p>
+            <section className="np-section">
+              <h2 className="np-head">Today&apos;s Slate</h2>
               {byLeague(data.today).length === 0 ? (
-                <p className="gtext" style={{ color: "var(--text-soft)", marginTop: 8 }}>No games scheduled today.</p>
+                <p className="np-note">No games scheduled today.</p>
               ) : (
-                byLeague(data.today).map(([lg, games]) => (
-                  <div key={lg} className="sports-lg">
-                    <p className="sports-lg-name">{lg}</p>
-                    {games.map((g) => <Row key={g.id} g={g} />)}
-                  </div>
-                ))
+                <div className="np-cols">
+                  {byLeague(data.today).map(([lg, games]) => (
+                    <div key={lg} className="sports-lg np-col-item">
+                      <p className="sports-lg-name">{lg}</p>
+                      {games.map((g) => <Row key={g.id} g={g} />)}
+                    </div>
+                  ))}
+                </div>
               )}
             </section>
 
-            <section className="tile sports-tile">
-              <p className="eyebrow"><span className="dot" /> yesterday&apos;s scores</p>
+            <section className="np-section">
+              <h2 className="np-head">Yesterday&apos;s Final Scores</h2>
               {byLeague(data.yesterday).length === 0 ? (
-                <p className="gtext" style={{ color: "var(--text-soft)", marginTop: 8 }}>No finals from yesterday.</p>
+                <p className="np-note">No finals from yesterday.</p>
               ) : (
-                byLeague(data.yesterday).map(([lg, games]) => (
-                  <div key={lg} className="sports-lg">
-                    <p className="sports-lg-name">{lg}</p>
-                    {games.map((g) => <Row key={g.id} g={g} />)}
-                  </div>
-                ))
+                <div className="np-cols">
+                  {byLeague(data.yesterday).map(([lg, games]) => (
+                    <div key={lg} className="sports-lg np-col-item">
+                      <p className="sports-lg-name">{lg}</p>
+                      {games.map((g) => <Row key={g.id} g={g} />)}
+                    </div>
+                  ))}
+                </div>
               )}
             </section>
 
-            <section className="tile sports-tile">
-              <p className="eyebrow"><span className="dot" /> your teams</p>
+            <section className="np-section">
+              <h2 className="np-head">Your Teams</h2>
               <div className="sports-favs">
                 <span className="sports-fav pinned">Cubs ⚾</span>
                 {favs.map((f) => (
@@ -246,13 +264,15 @@ export default function SportsPage() {
                 <button className="iconbtn" aria-label="Add team" onClick={addFav}>+</button>
               </div>
               {favErr ? (
-                <p className="note" style={{ marginTop: 10, color: "#E0483C" }}>
+                <p className="np-note" style={{ color: "var(--np-red)" }}>
                   Couldn&apos;t save — the <code>sports_favorites</code> table isn&apos;t set up yet. It&apos;ll stick once that&apos;s created.
                 </p>
               ) : (
-                <p className="note" style={{ marginTop: 10 }}>Games with your teams get starred and bumped up the &ldquo;worth watching&rdquo; list.</p>
+                <p className="np-note">Games with your teams get starred and bumped up the &ldquo;worth watching&rdquo; list.</p>
               )}
             </section>
+
+            <p className="np-foot">— 30 —</p>
           </>
         )}
       </div>
