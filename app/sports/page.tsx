@@ -24,6 +24,7 @@ export default function SportsPage() {
   const [now, setNow] = useState(() => Date.now());
   const [favs, setFavs] = useState<Fav[]>([]);
   const [favInput, setFavInput] = useState("");
+  const [favErr, setFavErr] = useState(false);
 
   useEffect(() => { setTod(autoTod()); }, []);
   useEffect(() => { const id = setInterval(() => setNow(Date.now()), 30000); return () => clearInterval(id); }, []);
@@ -56,12 +57,16 @@ export default function SportsPage() {
   const addFav = async () => {
     const v = favInput.trim();
     if (!v) return;
+    if (favNames.some((f) => f.toLowerCase() === v.toLowerCase())) { setFavInput(""); return; }
     setFavInput("");
+    setFavErr(false);
+    // Show it right away, then reconcile with the saved row.
+    const tempId = -Date.now();
+    setFavs((f) => [...f, { id: tempId, name: v }]);
     if (supabase) {
-      const { data } = await supabase.from("sports_favorites").insert({ name: v }).select("id,name").single();
-      if (data) setFavs((f) => [...f, data as Fav]);
-    } else {
-      setFavs((f) => [...f, { id: Date.now(), name: v }]);
+      const { data, error } = await supabase.from("sports_favorites").insert({ name: v }).select("id,name").single();
+      if (error) setFavErr(true);
+      else if (data) setFavs((f) => f.map((x) => (x.id === tempId ? (data as Fav) : x)));
     }
   };
   const removeFav = async (f: Fav) => {
@@ -240,7 +245,13 @@ export default function SportsPage() {
                   onChange={(e) => setFavInput(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") addFav(); }} />
                 <button className="iconbtn" aria-label="Add team" onClick={addFav}>+</button>
               </div>
-              <p className="note" style={{ marginTop: 10 }}>Games with your teams get starred and bumped up the &ldquo;worth watching&rdquo; list.</p>
+              {favErr ? (
+                <p className="note" style={{ marginTop: 10, color: "#E0483C" }}>
+                  Couldn&apos;t save — the <code>sports_favorites</code> table isn&apos;t set up yet. It&apos;ll stick once that&apos;s created.
+                </p>
+              ) : (
+                <p className="note" style={{ marginTop: 10 }}>Games with your teams get starred and bumped up the &ldquo;worth watching&rdquo; list.</p>
+              )}
             </section>
           </>
         )}
