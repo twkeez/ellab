@@ -195,11 +195,19 @@ async function fetchTennis(path: string, tour: string, date: string): Promise<Te
     const d = await r.json();
     const today = etTodayDash();
     const out: TennisEvent[] = [];
+    const wantWomen = tour === "WTA";
     for (const ev of d.events ?? []) {
       const matches: TennisMatch[] = [];
       for (const g of ev.groupings ?? []) {
         const groupName: string = g?.grouping?.displayName ?? "";
         if (/doubles/i.test(groupName)) continue; // singles are the draw for TV
+        // Combined events (e.g. National Bank Open) return BOTH draws under each
+        // endpoint — keep only this tour's gender.
+        const gl = groupName.toLowerCase();
+        const saysWomen = /women/.test(gl);
+        const saysMen = /\bmen/.test(gl) && !saysWomen;
+        if (wantWomen && saysMen) continue;
+        if (!wantWomen && saysWomen) continue;
         for (const c of g.competitions ?? []) {
           const m = tennisMatch(c);
           if (!m) continue;
