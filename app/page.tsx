@@ -9,6 +9,7 @@ import { countdown, goalProgress } from "@/lib/goals";
 import { pad, ymd, habitStreak } from "@/lib/streak";
 import { exerciseStats, DAILY_GOAL_MIN, WEEKLY_GOAL_DAYS, type Workout } from "@/lib/exercise";
 import { isFavorite, whenLabel, DEFAULT_FAVORITES, type SportsData } from "@/lib/sports";
+import { TRIP, daysUntil } from "@/lib/trip";
 import { WxIcon, SunriseIcon, SunsetIcon, DropletIcon, aqiColor } from "@/components/WxIcons";
 
 type Mode = "auto" | "morning" | "day" | "evening" | "night";
@@ -253,6 +254,8 @@ export default function Home() {
 
   const [workouts, setWorkouts] = useState<Workout[]>([]);
   const [sports, setSports] = useState<SportsData | null>(null);
+  const [tripNext, setTripNext] = useState<string | null>(null);
+  const [tripCounts, setTripCounts] = useState<{ done: number; total: number } | null>(null);
 
   const [sparkIndex, setSparkIndex] = useState(0);
 
@@ -378,6 +381,16 @@ export default function Home() {
         .select("id,date,minutes")
         .order("date");
       if (alive && wo) setWorkouts(wo as Workout[]);
+
+      const { data: tt } = await supabase!
+        .from("trip_tasks")
+        .select("title,urgent,done")
+        .order("id");
+      if (alive && tt) {
+        const open = (tt as { title: string; urgent: boolean; done: boolean }[]).filter((x) => !x.done);
+        setTripNext(open.find((x) => x.urgent)?.title ?? open[0]?.title ?? null);
+        setTripCounts({ done: tt.length - open.length, total: tt.length });
+      }
 
       const { data: dr } = await supabase!
         .from("drafts")
@@ -1343,6 +1356,26 @@ export default function Home() {
           </section>
 
           <section className="tile">
+            <p className="eyebrow"><span className="dot" /> europe &apos;27</p>
+            <span className="fill" />
+            <div className="focus-big" style={{ fontSize: "1.3rem" }}>
+              {daysUntil(TRIP.departISO, now ? now.getTime() : Date.now())}
+              <span style={{ fontSize: "0.55em", color: "var(--text-faint)" }}> days out</span>
+            </div>
+            {tripNext ? (
+              <p className="note" style={{ marginTop: 2, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>
+                Next: {tripNext}
+              </p>
+            ) : (
+              <p className="note" style={{ marginTop: 2 }}>PIT → CPH → the long way home</p>
+            )}
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, marginTop: 8 }}>
+              <span className="bike-week">{tripCounts ? `${tripCounts.done}/${tripCounts.total} prepped` : "Apr 14, 2027"}</span>
+              <Link href="/trip" className="mini" style={{ marginTop: 0 }}>Dossier →</Link>
+            </div>
+          </section>
+
+          <section className="tile">
             <p className="eyebrow"><span className="dot" /> tonight&apos;s sports</p>
             <span className="fill" />
             {sportsPick?.top ? (
@@ -1388,6 +1421,7 @@ export default function Home() {
           <section className="tile c2 tools">
             <p className="eyebrow" style={{ width: "100%" }}><span className="dot" /> jump into</p>
             <Link href="/recap" className="toolbtn">This week</Link>
+            <Link href="/trip" className="toolbtn">Europe &apos;27</Link>
             <Link href="/sports" className="toolbtn">Sports</Link>
             <Link href="/exercise" className="toolbtn">On the bike</Link>
             <Link href="/goals" className="toolbtn">Goals</Link>
