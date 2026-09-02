@@ -32,6 +32,7 @@ export const TRIP = {
   },
   windows: [
     { label: "Bernina Express seats open", when: "~mid-Oct 2026", dateISO: "2026-10-15" },
+    { label: "Vienna Shorts film festival", when: "May 25–30 '27 · 1h from Bratislava", dateISO: "2027-05-25" },
   ],
 };
 
@@ -51,6 +52,7 @@ export const DEFAULT_TASKS: { phase: string; title: string; urgent: boolean }[] 
   { phase: "Early '27", title: "Buy travel insurance (65 days · medical + interruption)", urgent: false },
   { phase: "Early '27", title: "Sort EU eSIM / phone plan", urgent: false },
   { phase: "Early '27", title: "Book Vienna→Bratislava bus (once flight locked)", urgent: false },
+  { phase: "Early '27", title: "Vienna Shorts film fest (May 25–30) — tickets + a Vienna night", urgent: false },
   { phase: "Final month", title: "Notify bank/cards; confirm a no-FX-fee card", urgent: false },
   { phase: "Final month", title: "Pack prescriptions/supplies for 65 days", urgent: false },
   { phase: "Final month", title: "Check in at the 24-hr mark (both directions)", urgent: false },
