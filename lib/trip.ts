@@ -36,7 +36,7 @@ export const TRIP = {
   ],
 };
 
-export const PHASES = ["Soon · Sep–Oct '26", "Fall '26", "Early '27", "Final month"];
+export const PHASES = ["Soon · Sep–Oct '26", "Fall '26", "Early '27", "Final month", "See & do"];
 
 export const DEFAULT_TASKS: { phase: string; title: string; urgent: boolean }[] = [
   { phase: "Soon · Sep–Oct '26", title: "Confirm Delta shows carry-on included on Main Basic", urgent: true },
@@ -57,6 +57,7 @@ export const DEFAULT_TASKS: { phase: string; title: string; urgent: boolean }[] 
   { phase: "Final month", title: "Pack prescriptions/supplies for 65 days", urgent: false },
   { phase: "Final month", title: "Check in at the 24-hr mark (both directions)", urgent: false },
   { phase: "Final month", title: "Offline maps, save Airbnb addresses, photo passport", urgent: false },
+  { phase: "See & do", title: "CopenHill — ski-slope power plant: hike the roof, rooftop bar (CPH)", urgent: false },
 ];
 
 export const DEFAULT_BOOKINGS: { label: string; detail: string; done: boolean }[] = [
