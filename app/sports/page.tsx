@@ -15,7 +15,7 @@ function autoTod(): string {
   return "night";
 }
 
-const LEAGUE_ORDER = ["MLB", "NFL", "NHL", "EPL", "UCL", "La Liga", "Serie A", "Bundesliga", "MLS"];
+const LEAGUE_ORDER = ["MLB", "NFL", "CFB", "NHL", "EPL", "UCL", "La Liga", "Serie A", "Bundesliga", "MLS"];
 const DAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 const MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
 
@@ -140,7 +140,7 @@ export default function SportsPage() {
         <div className="sg-teams">
           {[g.away, g.home].map((t, i) => (
             <div key={i} className={"sg-team" + (t.winner ? " win" : "")}>
-              <span className="sg-name">{t.short}{t.record ? <span className="sg-rec"> {t.record}</span> : null}</span>
+              <span className="sg-name">{t.rank ? <span className="sg-rank">#{t.rank} </span> : null}{t.short}{t.record ? <span className="sg-rec"> {t.record}</span> : null}</span>
               <span className="sg-score">{g.state === "pre" ? "" : t.score ?? ""}</span>
             </div>
           ))}

@@ -8,6 +8,7 @@ export type Team = {
   score: string | null;
   record: string | null;
   winner: boolean;
+  rank: number | null; // AP/coaches rank (college), null when unranked/pro
 };
 
 export type Game = {

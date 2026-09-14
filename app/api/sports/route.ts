@@ -8,6 +8,7 @@ const BASE = "https://site.api.espn.com/apis/site/v2/sports";
 const LEAGUES: { key: string; path: string; close: number }[] = [
   { key: "MLB", path: "baseball/mlb", close: 1 },
   { key: "NFL", path: "football/nfl", close: 3 },
+  { key: "CFB", path: "football/college-football", close: 8 },
   { key: "NHL", path: "hockey/nhl", close: 1 },
   { key: "EPL", path: "soccer/eng.1", close: 1 },
   { key: "UCL", path: "soccer/uefa.champions", close: 1 },
@@ -53,6 +54,7 @@ function isContender(rec: string | null): boolean {
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 function team(c: any): Team {
+  const rank = c?.curatedRank?.current;
   return {
     name: c?.team?.displayName ?? "TBD",
     short: c?.team?.shortDisplayName ?? c?.team?.name ?? "TBD",
@@ -60,6 +62,7 @@ function team(c: any): Team {
     score: c?.score ?? null,
     record: (c?.records ?? [])[0]?.summary ?? null,
     winner: !!c?.winner,
+    rank: typeof rank === "number" && rank >= 1 && rank <= 25 ? rank : null,
   };
 }
 
@@ -88,6 +91,13 @@ function normalize(leagueKey: string, closeMargin: number, ev: any): Game | null
   if (postseason) { score += 3; reasons.push("Playoffs"); }
   if (national) { score += 2; const net = broadcasts.find((n) => isNational(n)); reasons.push(net ? `Nat'l TV · ${net}` : "National TV"); }
   if (isContender(H.record) && isContender(A.record)) { score += 2; reasons.push("Two contenders"); }
+  // College rankings: a top-25 clash is appointment TV.
+  if (H.rank && A.rank) { score += 3; reasons.push(`#${Math.min(H.rank, A.rank)} vs #${Math.max(H.rank, A.rank)}`); }
+  else if (H.rank || A.rank) {
+    const r = (H.rank ?? A.rank)!;
+    score += r <= 10 ? 2 : 1;
+    reasons.push(`#${r} ${(H.rank ? H : A).short}`);
+  }
 
   if (state === "post") {
     const hs = parseInt(H.score ?? "0", 10);
@@ -237,12 +247,17 @@ export async function GET() {
   const today = etDate(0);
   const yesterday = etDate(-1);
 
+  // 80+ college games on a Saturday would drown the page — keep the watchable
+  // ones (a ranked team, a national window, or a flagged finish).
+  const trimCFB = (games: Game[]) =>
+    games.filter((g) => g.league !== "CFB" || g.home.rank || g.away.rank || g.national || g.drama);
+
   const todayJobs = LEAGUES.map((l) =>
-    fetchBoard(l.path, today).then((evs) => evs.map((e) => normalize(l.key, l.close, e)).filter(Boolean) as Game[])
+    fetchBoard(l.path, today).then((evs) => trimCFB(evs.map((e) => normalize(l.key, l.close, e)).filter(Boolean) as Game[]))
   );
   const yestJobs = LEAGUES.map((l) =>
     fetchBoard(l.path, yesterday).then((evs) =>
-      (evs.map((e) => normalize(l.key, l.close, e)).filter(Boolean) as Game[]).filter((g) => g.state === "post")
+      trimCFB(evs.map((e) => normalize(l.key, l.close, e)).filter(Boolean) as Game[]).filter((g) => g.state === "post")
     )
   );
 
