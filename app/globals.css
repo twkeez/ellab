@@ -147,6 +147,15 @@ html, body { margin: 0; padding: 0; }
 .rf { font-family: var(--mono); font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.05em; padding: 5px 11px; border-radius: 999px;
   border: 1px solid var(--border-2); background: transparent; color: var(--text-soft); cursor: pointer; transition: background .2s, color .2s; }
 .rf.on { background: var(--accent); color: var(--accent-ink); border-color: transparent; font-weight: 600; }
+.mart { width: 36px; height: 36px; border-radius: 8px; object-fit: cover; flex-shrink: 0;
+  border: 1px solid var(--border); box-shadow: 0 2px 6px -2px rgba(0,0,0,0.25); }
+.list.media a { color: inherit; text-decoration: none; }
+.list.media a:hover b { color: var(--accent-ink); }
+.mprev { flex-shrink: 0; width: 28px; height: 28px; border-radius: 50%; border: 1px solid var(--border-2);
+  background: var(--field); color: var(--text-soft); cursor: pointer; font-size: 10px; line-height: 1;
+  display: grid; place-items: center; transition: border-color .15s, background .15s, color .15s; }
+.mprev:hover { border-color: var(--accent); color: var(--text); }
+.mprev.on { background: var(--accent); border-color: transparent; color: var(--accent-ink); }
 .mtype { font-family: var(--mono); font-size: 9.5px; text-transform: uppercase; letter-spacing: 0.06em; padding: 4px 8px; border-radius: 7px;
   border: 1px solid var(--border-2); color: var(--text-soft); width: 44px; text-align: center; flex-shrink: 0; }
 .media li { align-items: flex-start; }

@@ -18,7 +18,15 @@ type MediaType = "book" | "film" | "music" | "game";
 
 type Grocery = { id: number; text: string; done: boolean };
 type Todo = { id: number; text: string; done: boolean };
-type MediaItem = { id: number; type: MediaType; title: string; author?: string };
+type MediaItem = {
+  id: number;
+  type: MediaType;
+  title: string;
+  author?: string | null;
+  artwork_url?: string | null;
+  preview_url?: string | null;
+  apple_url?: string | null;
+};
 type Wx = {
   city: string;
   tempF: number;
@@ -294,11 +302,19 @@ export default function Home() {
         .order("created_at");
       if (alive && g) setGroceries(g as Grocery[]);
 
-      const { data: r } = await supabase!
+      // Falls back to the old columns until the artwork migration has run,
+      // so the radar never shows sample data over real entries.
+      let r = (await supabase!
         .from("radar_items")
-        .select("id,type,title,author")
-        .order("created_at");
-      if (alive && r) setRadar(r as MediaItem[]);
+        .select("id,type,title,author,artwork_url,preview_url,apple_url")
+        .order("created_at")).data as MediaItem[] | null;
+      if (!r) {
+        r = (await supabase!
+          .from("radar_items")
+          .select("id,type,title,author")
+          .order("created_at")).data as MediaItem[] | null;
+      }
+      if (alive && r) setRadar(r);
 
       const { data: n } = await supabase!
         .from("notes")
@@ -599,13 +615,67 @@ export default function Home() {
       const { data } = await supabase
         .from("radar_items")
         .insert({ type, title: v })
-        .select("id,type,title,author")
+        .select("id,type,title,author,artwork_url,preview_url,apple_url")
         .single();
       if (data) setRadar((r) => [...r, data as MediaItem]);
     } else {
       setRadar((r) => [...r, { id: nextId.current++, type, title: v }]);
     }
     say("added to your radar");
+  };
+
+  // Music entries dress themselves: album art, the artist, a 30-second
+  // preview and an Apple Music link, looked up once and kept on the row.
+  const enrichMusic = useCallback(async (item: MediaItem) => {
+    if (item.type !== "music" || item.artwork_url) return;
+    try {
+      const q = item.author ? `${item.title} ${item.author}` : item.title;
+      const r = await fetch(`/api/music-lookup?q=${encodeURIComponent(q)}`);
+      if (!r.ok) return;
+      const d = await r.json();
+      if (!d.found) return;
+      const patch = {
+        artwork_url: d.artwork ?? null,
+        preview_url: d.preview ?? null,
+        apple_url: d.appleUrl ?? null,
+        author: item.author ?? d.artist ?? null,
+      };
+      setRadar((rs) => rs.map((x) => (x.id === item.id ? { ...x, ...patch } : x)));
+      if (supabase) await supabase.from("radar_items").update(patch).eq("id", item.id);
+    } catch {
+      // leave the plain row; we'll try again next visit
+    }
+  }, []);
+
+  const enrichTried = useRef<Set<number>>(new Set());
+  useEffect(() => {
+    const targets = radar
+      .filter((m) => m.type === "music" && !m.artwork_url && !enrichTried.current.has(m.id))
+      .slice(0, 6);
+    if (!targets.length) return;
+    for (const m of targets) enrichTried.current.add(m.id);
+    (async () => {
+      for (const m of targets) await enrichMusic(m);
+    })();
+  }, [radar, enrichMusic]);
+
+  // One preview at a time; tapping again (or the clip ending) stops it.
+  const previewRef = useRef<HTMLAudioElement | null>(null);
+  const [previewing, setPreviewing] = useState<number | null>(null);
+  useEffect(() => () => previewRef.current?.pause(), []);
+  const togglePreview = (m: MediaItem) => {
+    previewRef.current?.pause();
+    previewRef.current = null;
+    if (previewing === m.id) {
+      setPreviewing(null);
+      return;
+    }
+    if (!m.preview_url) return;
+    const audio = new Audio(m.preview_url);
+    previewRef.current = audio;
+    setPreviewing(m.id);
+    audio.onended = () => setPreviewing((cur) => (cur === m.id ? null : cur));
+    audio.play().catch(() => setPreviewing((cur) => (cur === m.id ? null : cur)));
   };
 
   const routeEntry = async (dest: string, text: string) => {
@@ -621,7 +691,7 @@ export default function Home() {
       const type = dest as MediaType;
       if (supabase) {
         const { data } = await supabase
-          .from("radar_items").insert({ type, title: text }).select("id,type,title,author").single();
+          .from("radar_items").insert({ type, title: text }).select("id,type,title,author,artwork_url,preview_url,apple_url").single();
         if (data) setRadar((r) => [...r, data as MediaItem]);
       } else {
         setRadar((r) => [...r, { id: nextId.current++, type, title: text }]);
@@ -1095,8 +1165,32 @@ export default function Home() {
             <ul className="list media">
               {visibleRadar.map((m) => (
                 <li key={m.id}>
-                  <span className="mtype">{m.type}</span>
-                  <span className="gtext"><b>{m.title}</b>{m.author ? <> <i>{m.author}</i></> : null}</span>
+                  {m.artwork_url ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img className="mart" src={m.artwork_url} alt="" loading="lazy" />
+                  ) : (
+                    <span className="mtype">{m.type}</span>
+                  )}
+                  <span className="gtext">
+                    {m.apple_url ? (
+                      <a href={m.apple_url} target="_blank" rel="noopener noreferrer" title="Open in Apple Music">
+                        <b>{m.title}</b>
+                      </a>
+                    ) : (
+                      <b>{m.title}</b>
+                    )}
+                    {m.author ? <> <i>{m.author}</i></> : null}
+                  </span>
+                  {m.preview_url && (
+                    <button
+                      className={"mprev" + (previewing === m.id ? " on" : "")}
+                      aria-label={previewing === m.id ? "Stop preview" : "Play 30-second preview"}
+                      aria-pressed={previewing === m.id}
+                      onClick={() => togglePreview(m)}
+                    >
+                      {previewing === m.id ? "■" : "▶"}
+                    </button>
+                  )}
                 </li>
               ))}
             </ul>
