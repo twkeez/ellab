@@ -25,6 +25,8 @@ export default function CommandPalette() {
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
+      // The shop is public; keep the lab's search out of it.
+      if (window.location.pathname.startsWith("/shop")) return;
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
         e.preventDefault();
         setOpen((o) => !o);

@@ -23,5 +23,6 @@ export const TOOLS: Tool[] = [
   { name: "The feed", desc: "Books, film & Pittsburgh news that learns", href: "/" },
   { name: "On this day", desc: "A little history, every day", href: "/" },
   { name: "Timer", desc: "Quick kitchen timers", href: "/" },
+  { name: "Sprig & Stem", desc: "A print-on-demand shop — cart & Stripe checkout", href: "/shop" },
   { name: "Random spark", desc: "A whim to build when inspiration strikes", href: "/" },
 ];

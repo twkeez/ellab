@@ -1,0 +1,94 @@
+/* Sprig & Stem storefront. Scoped under .shop so it never touches the lab. */
+.shop {
+  --paper: #F7F3EA; --card: #FFFDF8; --tile: #EFE9DC;
+  --ink: #23271F; --ink-soft: #5D6157; --line: rgba(35,39,31,0.12);
+  --green: #3E6B48; --green-ink: #FFFDF8; --warn: #A3402B;
+  --serif: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
+  --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+  min-height: 100vh; display: flex; flex-direction: column;
+  background: var(--paper); color: var(--ink); font-family: var(--sans); -webkit-font-smoothing: antialiased;
+}
+@media (prefers-color-scheme: dark) {
+  .shop {
+    --paper: #171915; --card: #20231D; --tile: #2A2D26;
+    --ink: #ECE8DD; --ink-soft: #A6A99E; --line: rgba(236,232,221,0.12);
+    --green: #8DBF8F; --green-ink: #13200F; --warn: #E7836D;
+  }
+}
+.shop a { color: inherit; }
+
+.sh-top { display: flex; align-items: center; justify-content: space-between; gap: 16px;
+  padding: 18px clamp(16px, 4vw, 40px); border-bottom: 1px solid var(--line); }
+.sh-logo { font-family: var(--serif); font-size: 1.45rem; font-weight: 600; letter-spacing: -0.01em; text-decoration: none; }
+.sh-cartlink { display: inline-flex; align-items: center; gap: 8px; text-decoration: none; font-weight: 600; font-size: 14px;
+  padding: 8px 14px; border: 1px solid var(--line); border-radius: 999px; background: var(--card); }
+.sh-badge { min-width: 20px; height: 20px; padding: 0 6px; border-radius: 999px; background: var(--green); color: var(--green-ink);
+  font-size: 12px; display: inline-grid; place-items: center; }
+.sh-ribbon { text-align: center; font-size: 12.5px; color: var(--ink-soft); padding: 8px 16px; border-bottom: 1px solid var(--line); }
+
+.sh-main { flex: 1; width: 100%; max-width: 1080px; margin: 0 auto; padding: clamp(20px, 4vw, 44px) clamp(16px, 4vw, 40px); }
+.sh-foot { border-top: 1px solid var(--line); padding: 24px clamp(16px, 4vw, 40px); font-size: 13px; color: var(--ink-soft); }
+.sh-foot p { margin: 4px auto; max-width: 1000px; }
+
+.sh-hero { padding: 12px 0 28px; max-width: 640px; }
+.sh-hero h1, .sh-h1, .sh-info h1 { font-family: var(--serif); font-weight: 600; letter-spacing: -0.015em; line-height: 1.1; margin: 0 0 12px; }
+.sh-hero h1 { font-size: clamp(2rem, 5vw, 3rem); }
+.sh-h1 { font-size: 2rem; margin-bottom: 24px; }
+.sh-hero p { color: var(--ink-soft); font-size: 1.05rem; line-height: 1.55; margin: 0 0 10px; }
+
+.sh-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 230px), 1fr)); gap: 20px; }
+.sh-card { display: block; text-decoration: none; border-radius: 14px; overflow: hidden; background: var(--card);
+  border: 1px solid var(--line); transition: transform .15s ease, box-shadow .2s ease; }
+.sh-card:hover { transform: translateY(-3px); box-shadow: 0 12px 28px rgba(0,0,0,0.08); }
+.sh-card-meta { display: flex; justify-content: space-between; gap: 10px; padding: 12px 14px; font-size: 14.5px; }
+.sh-card-meta span { color: var(--ink-soft); white-space: nowrap; }
+
+.sh-art { background: var(--tile); aspect-ratio: 1; display: grid; place-items: center; }
+.sh-art svg { width: 82%; height: 82%; }
+.sh-art-lg { border-radius: 16px; }
+.sh-art-sm { width: 72px; border-radius: 10px; flex: none; }
+
+.sh-back { display: inline-block; font-size: 14px; color: var(--ink-soft); text-decoration: none; margin-bottom: 18px; }
+.sh-back:hover { color: var(--ink); }
+.sh-product { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); gap: clamp(20px, 4vw, 48px); align-items: start; }
+.sh-info h1 { font-size: clamp(1.8rem, 4vw, 2.4rem); }
+.sh-blurb { color: var(--ink-soft); line-height: 1.55; margin: 0 0 20px; }
+.sh-price { font-size: 1.4rem; font-weight: 600; margin: 0 0 18px; }
+.sh-variants { border: 0; padding: 0; margin: 0 0 18px; display: flex; flex-wrap: wrap; gap: 8px; }
+.sh-variants legend { font-size: 13px; font-weight: 600; margin-bottom: 8px; padding: 0; }
+.sh-variants button { font: inherit; font-size: 14px; padding: 8px 14px; border-radius: 8px; cursor: pointer;
+  border: 1px solid var(--line); background: var(--card); color: var(--ink); }
+.sh-variants button.on { border-color: var(--green); box-shadow: inset 0 0 0 1px var(--green); font-weight: 600; }
+.sh-row { display: flex; gap: 12px; align-items: end; flex-wrap: wrap; }
+.sh-qty { display: flex; flex-direction: column; gap: 6px; font-size: 13px; font-weight: 600; }
+.shop select { font: inherit; font-size: 14px; padding: 9px 10px; border-radius: 8px; border: 1px solid var(--line); background: var(--card); color: var(--ink); }
+.sh-btn { font: inherit; font-weight: 600; font-size: 15px; padding: 11px 22px; border: 0; border-radius: 999px; cursor: pointer;
+  background: var(--green); color: var(--green-ink); transition: filter .15s; }
+.sh-btn:hover { filter: brightness(1.08); }
+.sh-btn:disabled { opacity: .6; cursor: progress; }
+.sh-btn-wide { width: 100%; margin-top: 8px; }
+.sh-note { font-size: 13px; color: var(--ink-soft); margin: 12px 0 0; }
+.sh-error { font-size: 13.5px; color: var(--warn); margin: 12px 0 0; }
+.sh-details { margin: 26px 0 0; padding: 18px 0 0 18px; border-top: 1px solid var(--line); color: var(--ink-soft); font-size: 14px; line-height: 1.8; }
+
+.sh-empty { color: var(--ink-soft); }
+.sh-cart { display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: 28px; align-items: start; }
+.sh-lines { list-style: none; margin: 0; padding: 0; border-top: 1px solid var(--line); }
+.sh-lines li { display: flex; align-items: center; gap: 14px; padding: 14px 0; border-bottom: 1px solid var(--line); flex-wrap: wrap; }
+.sh-line-name { flex: 1; min-width: 140px; display: flex; flex-direction: column; gap: 2px; font-size: 14px; }
+.sh-line-name a { text-decoration: none; }
+.sh-line-name span { color: var(--ink-soft); font-size: 13px; }
+.sh-line-total { min-width: 70px; text-align: right; }
+.sh-link { font: inherit; font-size: 13px; background: none; border: 0; padding: 0; color: var(--ink-soft); text-decoration: underline; cursor: pointer; }
+.sh-summary { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 18px; position: sticky; top: 16px; }
+.sh-summary dl { margin: 0; }
+.sh-summary dl div { display: flex; justify-content: space-between; padding: 6px 0; font-size: 14.5px; }
+.sh-summary dt { color: var(--ink-soft); }
+.sh-summary dd { margin: 0; }
+.sh-summary .sh-total { border-top: 1px solid var(--line); margin-top: 6px; padding-top: 12px; font-weight: 600; font-size: 16px; }
+.sh-summary .sh-total dt { color: var(--ink); }
+
+@media (max-width: 760px) {
+  .sh-product, .sh-cart { grid-template-columns: 1fr; }
+  .sh-summary { position: static; }
+}

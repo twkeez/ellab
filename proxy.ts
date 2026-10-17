@@ -32,13 +32,15 @@ export async function proxy(request: NextRequest) {
     const path = request.nextUrl.pathname;
     // Only the free, no-user-data endpoints are public. Anything that costs
     // money or touches private data (e.g. /api/write) stays behind the gate.
-    const PUBLIC_API = ["/api/weather", "/api/news", "/api/recipe", "/api/onthisday", "/api/sports", "/api/music-lookup"];
+    const PUBLIC_API = ["/api/weather", "/api/news", "/api/recipe", "/api/onthisday", "/api/sports", "/api/music-lookup", "/api/shop"];
     // Cron routes carry no user session and protect themselves with CRON_SECRET.
     // PWA files (manifest + service worker) must load before sign-in.
     const PUBLIC_FILES = ["/manifest.webmanifest", "/sw.js"];
     const isPublic =
       path.startsWith("/login") ||
       path.startsWith("/auth") ||
+      // The storefront is for customers, so it is never gated.
+      path.startsWith("/shop") ||
       path.startsWith("/api/cron") ||
       PUBLIC_FILES.includes(path) ||
       PUBLIC_API.some((p) => path.startsWith(p));
